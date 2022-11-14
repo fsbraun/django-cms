@@ -1286,8 +1286,6 @@ class PageContentAdmin(admin.ModelAdmin):
 
             page_url.delete()
             page_content.delete()
-            for p in saved_plugins:
-                p.delete()
 
             page.remove_language(language)
 

@@ -614,6 +614,7 @@ class Placeholder(models.Model):
 
     def delete_plugin(self, instance):
         instance.get_descendants().delete()
+        instance.placeholder = None  # Let instance.delete() know we're taking care of the plugin tree here
         instance.delete()
         last_plugin = self.get_last_plugin(instance.language)
 

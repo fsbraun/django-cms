@@ -264,6 +264,16 @@ class CMSPlugin(models.Model, metaclass=PluginModelBase):
         }
         return data
 
+    def delete(self, using=None, keep_parents=False):
+        if self.pk and self.placeholder_id:
+            # Let the placeholder delete one of its plugins:
+            # This updates the plugin tree and all other plugins' position for that placeholder and language
+            # ATTN: While this makes plugin_instance.delete() safe it does NOT affect plugin_queryset.delete()!
+            self.placeholder.delete_plugin(self)
+        else:
+            # Not attached to a placeholder, just remove object from db
+            super().delete(using, keep_parents)
+
     def refresh_from_db(self, *args, **kwargs):
         super().refresh_from_db(*args, **kwargs)
 
