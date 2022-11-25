@@ -310,6 +310,11 @@ class CMSPlugin(MP_Node, metaclass=PluginModelBase):
         then overwriting its ID at step 5, the ORM will copy the custom
         fields for us.
         """
+
+        warnings.warn("CMSPlugin.copy_plugin will be removed in django CMS 4.1. From version 4 on, please use "
+                      "cms.utils.copy_plugins_to_placeholder instead.",
+                      DeprecationWarning, stacklevel=2)
+
         try:
             plugin_instance, cls = self.get_plugin_instance()
         except KeyError:  # plugin type not found anymore
