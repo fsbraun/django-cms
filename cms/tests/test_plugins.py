@@ -1,6 +1,5 @@
 import datetime
 import pickle
-import warnings
 from contextlib import contextmanager
 
 from django import http
