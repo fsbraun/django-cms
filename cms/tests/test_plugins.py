@@ -21,7 +21,7 @@ from djangocms_text_ckeditor.models import Text
 from cms import api
 from cms.api import create_page
 from cms.exceptions import (
-    DontUsePageAttributeWarning, PluginAlreadyRegistered, PluginNotRegistered,
+    PluginAlreadyRegistered, PluginNotRegistered,
 )
 from cms.models import Page, Placeholder
 from cms.models.pluginmodel import CMSPlugin
@@ -651,33 +651,6 @@ class PluginsTestCase(PluginsTestBaseCase):
         )
 
         self.assertEqual(a.get_short_description(), "<Empty>")
-
-    def test_page_attribute_warns(self):
-        page = api.create_page("page", "nav_playground.html", "en")
-        placeholder = page.get_placeholders("en").get(slot='body')
-        a = CMSPlugin(
-            plugin_type='TextPlugin',
-            placeholder=placeholder,
-            position=1,
-            language=self.FIRST_LANG
-        )
-        a.save()
-
-        def get_page(plugin):
-            return plugin.page
-
-        self.assertWarns(
-            DontUsePageAttributeWarning,
-            "Don't use the page attribute on CMSPlugins! "
-            "CMSPlugins are not guaranteed to have a page associated with them!",
-            get_page, a
-        )
-
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter('always')
-            a.page
-            self.assertEqual(1, len(w))
-            self.assertIn('test_plugins.py', w[0].filename)
 
     def test_editing_plugin_changes_page_modification_time_in_sitemap(self):
         now = timezone.now()

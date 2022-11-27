@@ -1,6 +1,5 @@
 import json
 import os
-import warnings
 from datetime import date
 from functools import lru_cache
 
@@ -13,7 +12,6 @@ from django.utils.encoding import force_str
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 
-from cms.exceptions import DontUsePageAttributeWarning
 from cms.models.placeholdermodel import Placeholder
 from cms.utils.conf import get_cms_setting
 from cms.utils.urlutils import admin_reverse
@@ -293,16 +291,6 @@ class CMSPlugin(models.Model, metaclass=PluginModelBase):
             today = date.today()
             return os.path.join(get_cms_setting('PAGE_MEDIA_PATH'),
                                 str(today.year), str(today.month), str(today.day), filename)
-
-    @property
-    def page(self):
-        warnings.warn(
-            "Don't use the page attribute on CMSPlugins! CMSPlugins are not "
-            "guaranteed to have a page associated with them!",
-            DontUsePageAttributeWarning,
-            stacklevel=2,
-        )
-        return self.placeholder.page if self.placeholder_id else None
 
     def get_instance_icon_src(self):
         """

@@ -1,14 +1,10 @@
 #!/usr/bin/env python
 import os
 import sys
-import warnings
 
 import app_manage
 
-from cms.exceptions import DontUsePageAttributeWarning
-
 gettext = lambda s: s
-warnings.filterwarnings('ignore', category=DontUsePageAttributeWarning)
 
 
 def install_auth_user_model(settings, value):

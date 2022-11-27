@@ -576,8 +576,8 @@ class BaseCMSTestCase:
     def get_change_plugin_uri(self, plugin, language=None):
         language = language or 'en'
 
-        if plugin.page:
-            path = plugin.page.get_absolute_url(language)
+        if plugin.placeholder and plugin.placeholder.page:
+            path = plugin.placeholder.page.get_absolute_url(language)
         else:
             path = '/{}/'.format(language)
 
@@ -588,8 +588,8 @@ class BaseCMSTestCase:
     def get_move_plugin_uri(self, plugin, language=None):
         language = language or 'en'
 
-        if plugin.page:
-            path = plugin.page.get_absolute_url(language)
+        if plugin.placeholder and plugin.placeholder.page:
+            path = plugin.placeholder.page.get_absolute_url(language)
         else:
             path = '/{}/'.format(language)
 
@@ -600,8 +600,8 @@ class BaseCMSTestCase:
     def get_copy_plugin_uri(self, plugin, language=None):
         language = language or 'en'
 
-        if plugin.page:
-            path = plugin.page.get_absolute_url(language)
+        if plugin.placeholder and plugin.placeholder.page:
+            path = plugin.placeholder.page.get_absolute_url(language)
         else:
             path = '/{}/'.format(language)
 
@@ -624,8 +624,8 @@ class BaseCMSTestCase:
     def get_delete_plugin_uri(self, plugin, language=None):
         language = language or 'en'
 
-        if plugin.page:
-            path = plugin.page.get_absolute_url(language)
+        if plugin.placeholder and plugin.placeholder.page:
+            path = plugin.placeholder.page.get_absolute_url(language)
         else:
             path = '/{}/'.format(language)
 

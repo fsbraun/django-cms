@@ -409,15 +409,16 @@ class CMSPluginBase(admin.ModelAdmin, metaclass=CMSPluginBaseMetaclass):
 
         plugins = [root] + list(root.get_descendants())
 
+        page = obj.placeholder.page if obj.placeholder else None
         child_classes = self.get_child_classes(
             slot=obj.placeholder.slot,
-            page=obj.page,
+            page=page,
             instance=obj,
         )
 
         parent_classes = self.get_parent_classes(
             slot=obj.placeholder.slot,
-            page=obj.page,
+            page=page,
             instance=obj,
         )
 

@@ -68,9 +68,6 @@ class Deprecated(Exception): pass
 class DuplicatePlaceholderWarning(Warning): pass
 
 
-class DontUsePageAttributeWarning(Warning): pass
-
-
 class CMSDeprecationWarning(Warning): pass
 
 
