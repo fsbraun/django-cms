@@ -121,17 +121,23 @@ class CMSAppConfig():
     """
     .. versionadded:: 4.0
 
-    Base class that all cms app configurations should inherit from.
+    Base class that all cms app configurations should inherit from. To use features of other apps,
+    apps subclass CMSAppConfig in a file called ``cms_config.py``. They can use features of any other
+    cms app installed (if it provides them using a :class:`CMSAppExtension`).
 
-    CMSAppConfig live in a file called ``cms_config.py``.
+    To use features offered by the django CMS core apps have to set ``cms_enabled = True`` in their
+    subclass::
 
-    Apps subclassing ``CMSAppConfig`` can set ``cms_enabled = True`` for their app config to
-    use django CMS' wizzard functionality. Additional wizzwards are listed in the app config's
-    ``cms_wizzards`` property.
+        class MyAppConfig(CMSAppConfig):
+            cms_enabled = True
 
-    The second functionality that django CMS offers is attaching Model objects to the toolbar. To use
-    this functionality, set list the Model classes in ``cms_toolbar_enabled_models`` and have
-    `cms_enabled = True```
+    The django CMS core offers the following features:
+
+    1. **Providing a wizard**: Apps providing a wizard list them in their app config's
+        ``cms_wizards`` property.
+
+    2. **Attaching a Model to the toolbar**: To use this feature,  list the Model classes that can
+        be attached to the toolbar in ``cms_toolbar_enabled_models``.
     """
 
     def __init__(self, django_app_config):
@@ -164,7 +170,7 @@ class CMSAppExtension(metaclass=ABCMeta):
         once for app B and once for app C.
 
         :param cms_config: the cms config class of the app registering for additional functionality
-        :type cms_config: :class:`CMSAppConfig` subclass
+        :type cms_config: :class:`CMSAppConfig` subclass containing potential configurations.
         """
         pass
 
