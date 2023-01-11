@@ -59,6 +59,51 @@ See the `Python/Django requirements for the current release version
 See the `installation how-to guide for an overview of some other requirements and dependencies of the current release
 <http://docs.django-cms.org/en/latest/how_to/install.html>`_.
 
+******************************************
+Currently supported plugin packages for v4
+******************************************
+
+============================= ========================================= ===================
+Package                       Description                               Status
+============================= ========================================= ===================
+djangocms-text-ckeditor       Text Plugin for django CMS using          supports v4.1
+                              CKEditor 4
+----------------------------- ----------------------------------------- -------------------
+djangocms-versioning          Adds versioning and publication           v4.x only
+                              management features to v4
+----------------------------- ----------------------------------------- -------------------
+djangocms-version-locking     Allows locking draft versions to avoid    v4.x only
+                              conflicts
+----------------------------- ----------------------------------------- -------------------
+djangocms-moderation          Implements moderation process to channel   v4.x only
+                              publications
+----------------------------- ----------------------------------------- -------------------
+djangocms-alias               Central management of recurring plugin    v4.x only
+                              sequences - replaces static placeholders
+----------------------------- ----------------------------------------- -------------------
+djangocms-url-manager         Central place to manage all link urls     v4.x only
+                              for your project
+----------------------------- ----------------------------------------- -------------------
+djangocms-frontend            Plugin bundle for django CMS providing
+                              several components from the popular
+                              Bootstrap 5 framework. Themable and
+                              extensible                                supports v4.1
+----------------------------- ----------------------------------------- -------------------
+django-filer                  Manager for assets like images            supports v4.1
+----------------------------- ----------------------------------------- -------------------
+djangocms-attributes-field    An opinionated implementation to add      no issues known
+                              attributes to any HTML element
+----------------------------- ----------------------------------------- -------------------
+djangocms-icons               Adds support for Fontawesome icons        supports v4.1
+                              attributes to any HTML element
+----------------------------- ----------------------------------------- -------------------
+djangocms-picture             Add images to your site                   no issues known
+----------------------------- ----------------------------------------- -------------------
+djangocms-link                Add links on your site                    no issues known
+----------------------------- ----------------------------------------- -------------------
+djangocms-admin-style         django CMS design for Django's admin
+                              backend                                   no issues known
+============================= ========================================= ===================
 
 ***************
 Getting started
@@ -71,7 +116,8 @@ These `tutorials <http://docs.django-cms.org/en/latest/introduction/index.html>`
 Documentation
 *************
 
-Our documentation working group maintains documentation for several versions of the project. Key versions are:
+Our documentation working group maintains documentation for several versions of
+the project. Key versions are:
 
 * `stable <http://docs.django-cms.org>`_ (default), for the **current release** version
 * `latest <http://docs.django-cms.org/en/latest/>`_, representing the latest build of the **release-3.4.x branch**
