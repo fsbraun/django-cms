@@ -66,8 +66,8 @@ Currently supported plugin packages for v4
 ============================= ========================================= ===================
 Package                       Description                               Status
 ============================= ========================================= ===================
-djangocms-text-ckeditor       Text Plugin for django CMS using          supports v4.1
-                              CKEditor 4
+djangocms-text-ckeditor       Text Plugin for django CMS using          supports v4.1 as of
+                              CKEditor 4                                v5.1.2
 ----------------------------- ----------------------------------------- -------------------
 djangocms-versioning          Adds versioning and publication           v4.x only
                               management features to v4
@@ -101,8 +101,8 @@ djangocms-picture             Add images to your site                   no issue
 ----------------------------- ----------------------------------------- -------------------
 djangocms-link                Add links on your site                    no issues known
 ----------------------------- ----------------------------------------- -------------------
-djangocms-admin-style         django CMS design for Django's admin
-                              backend                                   no issues known
+djangocms-admin-style         django CMS design for Django's admin      supports v4.1 as of
+                              backend                                   v3.2.1
 ============================= ========================================= ===================
 
 ***************
