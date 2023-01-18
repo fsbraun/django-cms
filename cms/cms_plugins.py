@@ -4,7 +4,7 @@ from django.http import (
     HttpResponse, HttpResponseBadRequest, HttpResponseForbidden,
 )
 from django.middleware.csrf import get_token
-from django.urls import re_path
+from django.urls import path
 from django.utils.translation import get_language, gettext, gettext_lazy as _
 
 from cms.models import CMSPlugin, Placeholder
@@ -68,7 +68,7 @@ class AliasPlugin(CMSPluginBase):
 
     def get_plugin_urls(self):
         return [
-            re_path(r'^create_alias/$', self.create_alias, name='cms_create_alias'),
+            path('create_alias/', self.create_alias, name='cms_create_alias'),
         ]
 
     @classmethod

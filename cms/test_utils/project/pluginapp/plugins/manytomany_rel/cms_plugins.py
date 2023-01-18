@@ -24,6 +24,7 @@ class ArticlePlugin(CMSPluginBase):
         return context
 
 
+@admin.register(ArticlePluginModel)
 class ArticlePluginAdmin(admin.ModelAdmin):
     filter_horizontal = ['sections']
 
@@ -65,4 +66,3 @@ plugin_pool.register_plugin(PluginWithM2MToModel)
 plugin_pool.register_plugin(PluginWithFKFromModel)
 
 # Used to test integrity of plugin form
-admin.site.register(ArticlePluginModel, ArticlePluginAdmin)

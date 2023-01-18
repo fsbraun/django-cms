@@ -11,6 +11,7 @@ from django.http import (
     HttpResponse, HttpResponseBadRequest, HttpResponseRedirect,
 )
 from django.http.request import QueryDict
+from django.urls import path
 from django.urls import Resolver404, re_path, resolve
 from django.utils.html import conditional_escape
 from django.utils.translation import override
@@ -21,6 +22,7 @@ from cms.utils.page import get_page_from_request
 from cms.utils.urlutils import admin_reverse
 
 
+@admin.register(UserSettings)
 class SettingsAdmin(ModelAdmin):
 
     def get_urls(self):
@@ -33,9 +35,9 @@ class SettingsAdmin(ModelAdmin):
         info = self.model._meta.app_label, self.model._meta.model_name
 
         return [
-            re_path(r'^session_store/$', self.session_store, name='%s_%s_session_store' % info),
-            re_path(r'^cms-toolbar/$', wrap(self.get_toolbar), name='%s_%s_get_toolbar' % info),
-            re_path(r'^$', wrap(self.change_view), name='%s_%s_change' % info),
+            path('session_store/', self.session_store, name='%s_%s_session_store' % info),
+            path('cms-toolbar/', wrap(self.get_toolbar), name='%s_%s_get_toolbar' % info),
+            path('', wrap(self.change_view), name='%s_%s_change' % info),
             re_path(r'^(.+)/$', wrap(self.change_view), name='%s_%s_change' % info),
         ]
 
@@ -135,4 +137,3 @@ class SettingsAdmin(ModelAdmin):
         return {}
 
 
-admin.site.register(UserSettings, SettingsAdmin)
