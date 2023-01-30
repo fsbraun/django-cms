@@ -125,6 +125,7 @@ The non-profit django CMS Association is dependent on donations to fulfill its p
 Credits
 *******
 
+* Includes icons from `Fontawesome4 <https://github.com/FortAwesome/Font-Awesome/tree/4.x>`_.
 * Includes icons from `FamFamFam <http://www.famfamfam.com>`_.
 * Python tree engine powered by
   `django-treebeard <https://tabo.pe/projects/django-treebeard/>`_.
