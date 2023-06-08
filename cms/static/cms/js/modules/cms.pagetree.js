@@ -856,9 +856,14 @@ var PageTree = new Class({
                 window.top.CMS.API.Toolbar.showLoader();
             } catch (err) {}
 
+            var csrfToken = element.closest('form input[name="csrfmiddlewaretoken"]');
+
             $.ajax({
                 method: 'post',
-                url: $(this).attr('href')
+                url: $(this).attr('href'),
+                data: {
+                    csrfmiddlewaretoken: csrfToken
+                }
             })
                 .done(function() {
                     try {
