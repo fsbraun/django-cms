@@ -2,7 +2,7 @@
   "name": "django-cms",
   "private": true,
   "devDependencies": {
-    "autoprefixer": "^6.3.6",
+    "autoprefixer": "^9.8.8",
     "babel-core": "^6.26.3",
     "babel-eslint": "^8.2.6",
     "babel-loader": "^7.1.0",
