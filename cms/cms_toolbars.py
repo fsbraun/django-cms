@@ -66,7 +66,7 @@ class PlaceholderToolbar(CMSToolbar):
     """
 
     def populate(self):
-        with warnings.catch_warnings(category=DeprecationWarning):
+        with warnings.catch_warnings():
             self.page = get_page_draft(self.request.current_page)
 
     def post_template_populate(self):
@@ -122,7 +122,7 @@ class BasicToolbar(CMSToolbar):
     _admin_menu = None
 
     def init_from_request(self):
-        with warnings.catch_warnings(category=DeprecationWarning):
+        with warnings.catch_warnings():
             self.page = get_page_draft(self.request.current_page)
 
     def populate(self):
@@ -397,7 +397,7 @@ class PageToolbar(CMSToolbar):
     # Populate
 
     def populate(self):
-        with warnings.catch_warnings(category=DeprecationWarning):
+        with warnings.catch_warnings():
             self.page = get_page_draft(self.request.current_page)
         self.title = self.get_title()
         self.permissions_activated = get_cms_setting('PERMISSION')

@@ -281,7 +281,7 @@ def user_can_view_page(user, page, site=None):
     public_for = get_cms_setting('PUBLIC_FOR')
     can_see_unrestricted = public_for == 'all' or (public_for == 'staff' and user.is_staff)
 
-    with warnings.catch_warnings(category=DeprecationWarning):
+    with warnings.catch_warnings():
         page = get_page_draft(page)
 
     # inherited and direct view permissions
