@@ -1,3 +1,4 @@
+import warnings
 from functools import wraps
 
 from cms.api import get_page_draft
@@ -280,7 +281,8 @@ def user_can_view_page(user, page, site=None):
     public_for = get_cms_setting('PUBLIC_FOR')
     can_see_unrestricted = public_for == 'all' or (public_for == 'staff' and user.is_staff)
 
-    page = get_page_draft(page)
+    with warnings.catch_warnings(category=DeprecationWarning):
+        page = get_page_draft(page)
 
     # inherited and direct view permissions
     is_restricted = page.has_view_restrictions(site)

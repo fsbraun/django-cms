@@ -415,7 +415,7 @@ def publish_page(page, user, language):
     """
     warnings.warn('This API function will be removed in django CMS 4. For publishing functionality use a package '
                   'that adds publishing, such as: djangocms-versioning.',
-                  UserWarning, stacklevel=2)
+                  DeprecationWarning, stacklevel=2)
 
     page = page.reload()
 
@@ -435,7 +435,7 @@ def publish_pages(include_unpublished=False, language=None, site=None):
     """
     warnings.warn('This API function will be removed in django CMS 4. For publishing functionality use a package '
                   'that adds publishing, such as: djangocms-versioning.',
-                  UserWarning, stacklevel=2)
+                  DeprecationWarning, stacklevel=2)
 
     qs = Page.objects.drafts()
 
@@ -474,7 +474,7 @@ def get_page_draft(page):
     """
     warnings.warn('This API function will be removed in django CMS 4. For publishing functionality use a package '
                   'that adds publishing, such as: djangocms-versioning.',
-                  UserWarning, stacklevel=2)
+                  DeprecationWarning, stacklevel=2)
 
     if page:
         if page.publisher_is_draft:

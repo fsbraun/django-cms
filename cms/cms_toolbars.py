@@ -1,3 +1,5 @@
+import warnings
+
 from django.conf import settings
 from django.contrib import admin
 from django.contrib.auth import get_permission_codename, get_user_model
@@ -64,7 +66,8 @@ class PlaceholderToolbar(CMSToolbar):
     """
 
     def populate(self):
-        self.page = get_page_draft(self.request.current_page)
+        with warnings.catch_warnings(category=DeprecationWarning):
+            self.page = get_page_draft(self.request.current_page)
 
     def post_template_populate(self):
         super().post_template_populate()
@@ -119,7 +122,8 @@ class BasicToolbar(CMSToolbar):
     _admin_menu = None
 
     def init_from_request(self):
-        self.page = get_page_draft(self.request.current_page)
+        with warnings.catch_warnings(category=DeprecationWarning):
+            self.page = get_page_draft(self.request.current_page)
 
     def populate(self):
         if not self.page:
@@ -393,7 +397,8 @@ class PageToolbar(CMSToolbar):
     # Populate
 
     def populate(self):
-        self.page = get_page_draft(self.request.current_page)
+        with warnings.catch_warnings(category=DeprecationWarning):
+            self.page = get_page_draft(self.request.current_page)
         self.title = self.get_title()
         self.permissions_activated = get_cms_setting('PERMISSION')
         self.change_admin_menu()
