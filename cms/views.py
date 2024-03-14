@@ -301,15 +301,15 @@ def render_object_endpoint(request, content_type_id, object_id, require_editable
                     # If so, try get the absolute URL and pass it to the toolbar as request_path
                     # The apphook's view function will be called.
                     absolute_url = content_type_obj.get_absolute_url()
-                    from cms.toolbar.toolbar import CMSToolbar
-                    request.toolbar = CMSToolbar(request, request_path=absolute_url)
                     # Resolve the apphook's url to get its view function
                     view_func, args, kwargs = resolve(absolute_url)
                     if view_func is not details:
+                        from cms.toolbar.toolbar import CMSToolbar
+                        request.toolbar = CMSToolbar(request, request_path=absolute_url)
                         return view_func(request, *args, **kwargs)
                 except Resolver404:
-                    # Apphook does not provide a view for its "root", show warning message
-                    return _handle_no_apphook(request)
+                    # Apphook does not provide a view for its "root", just show the page content
+                    pass
         else:
             content_type_obj = content_type.get_object_for_this_type(pk=object_id)
     except ObjectDoesNotExist as err:
