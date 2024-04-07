@@ -1,4 +1,5 @@
 import contextlib
+import json
 import logging
 import sys
 from collections import OrderedDict
@@ -15,8 +16,8 @@ from django.utils.translation import override
 from cms.cache.placeholder import get_placeholder_cache, set_placeholder_cache
 from cms.models import PageContent
 from cms.toolbar.utils import (
-    get_placeholder_toolbar_js,
-    get_plugin_toolbar_js,
+    get_placeholder_toolbar_data,
+    get_plugin_toolbar_data,
     get_toolbar_from_request,
 )
 from cms.utils import get_language_from_request
@@ -127,25 +128,25 @@ class BaseRenderer:
         plugin_menu_template = self.templates.placeholder_plugin_menu_template
         return plugin_menu_template.render({'plugin_menu': plugin_menu})
 
-    def get_placeholder_toolbar_js(self, placeholder, page=None):
+    def get_placeholder_toolbar_data(self, placeholder, page=None):
         plugins = self.plugin_pool.get_all_plugins(placeholder.slot, page)  # original
 
         plugin_types = [cls.__name__ for cls in plugins]
         allowed_plugins = plugin_types + self.plugin_pool.get_system_plugins()
-        placeholder_toolbar_js = get_placeholder_toolbar_js(
+        placeholder_toolbar_js = get_placeholder_toolbar_data(
             placeholder=placeholder,
             allowed_plugins=allowed_plugins,
         )
-        return placeholder_toolbar_js
+        return [placeholder_toolbar_js]
 
-    def get_plugin_toolbar_js(self, plugin, page=None):
+    def get_plugin_toolbar_data(self, plugin, page=None):
         placeholder_cache = self._rendered_plugins_by_placeholder.setdefault(plugin.placeholder_id, {})
         child_classes, parent_classes = get_plugin_restrictions(
             plugin=plugin,
             page=page,
             restrictions_cache=placeholder_cache,
         )
-        content = get_plugin_toolbar_js(
+        content = get_plugin_toolbar_data(
             plugin,
             children=child_classes,
             parents=parent_classes,
@@ -200,7 +201,8 @@ class ContentRenderer(BaseRenderer):
     placeholder_edit_template = (
         '{content} '
         '<div class="cms-placeholder cms-placeholder-{placeholder_id}"></div> '
-        '<script data-cms>{plugin_js}\n{placeholder_js}</script>'
+        '<script data-cms data-plugin type="application/json">{plugin_js}</script>\n'
+        '<script data-cms data-placeholder type="application/json">{placeholder_js}</script>'
     )
 
     def __init__(self, request):
@@ -308,19 +310,21 @@ class ContentRenderer(BaseRenderer):
             request = context.get("request", None)
             with override(request.toolbar.toolbar_language) if request else contextlib.nullcontext():
                 data = self.get_editable_placeholder_context(placeholder, page=page)
-            data['content'] = placeholder_content
-            placeholder_content = self.placeholder_edit_template.format(**data)
+            placeholder_content = self.placeholder_edit_template.format(
+                content=placeholder_content,
+                **{key: json.dumps(value) for key, value in data.items()}
+            )
 
         context.pop()
         return mark_safe(placeholder_content)
 
     def get_editable_placeholder_context(self, placeholder, page=None):
         placeholder_cache = self.get_rendered_plugins_cache(placeholder)
-        placeholder_toolbar_js = self.get_placeholder_toolbar_js(placeholder, page)
-        plugin_toolbar_js_bits = (self.get_plugin_toolbar_js(plugin, page=page)
-                                  for plugin in placeholder_cache['plugins'])
+        placeholder_toolbar_js = self.get_placeholder_toolbar_data(placeholder, page)
+        plugin_toolbar_js_bits = [self.get_plugin_toolbar_data(plugin, page=page)
+                                  for plugin in placeholder_cache['plugins']]
         context = {
-            'plugin_js': ''.join(plugin_toolbar_js_bits),
+            'plugin_js': plugin_toolbar_js_bits,
             'placeholder_js': placeholder_toolbar_js,
             'placeholder_id': placeholder.pk,
         }
@@ -638,7 +642,8 @@ class StructureRenderer(BaseRenderer):
         <script data-cms id="cms-plugin-child-classes-{placeholder_id}" type="text/cms-template">
             {plugin_menu_js}
         </script>
-        <script data-cms>{plugin_js}\n{placeholder_js}</script>
+        <script data-cms data-plugin type="application/json">{plugin_js}</script>\n
+        <script data-cms data-placeholder type="application/json">{placeholder_js}</script>
         """
     )
 
@@ -655,10 +660,9 @@ class StructureRenderer(BaseRenderer):
                 yield plugin
 
     def render_placeholder(self, placeholder, language, page=None):
-        rendered_plugins = self.render_plugins(placeholder, language=language, page=page)
-        plugin_js_output = ''.join(rendered_plugins)
+        plugin_js_output = list(self.render_plugins(placeholder, language=language, page=page))
 
-        placeholder_toolbar_js = self.get_placeholder_toolbar_js(placeholder, page)
+        placeholder_toolbar_js = self.get_placeholder_toolbar_data(placeholder, page)
         rendered_placeholder = RenderedPlaceholder(
             placeholder=placeholder,
             language=language,
@@ -672,9 +676,9 @@ class StructureRenderer(BaseRenderer):
 
         placeholder_structure_is = self.placeholder_edit_template.format(
             placeholder_id=placeholder.pk,
-            plugin_js=plugin_js_output,
+            plugin_js=json.dumps(plugin_js_output),
             plugin_menu_js=self.get_placeholder_plugin_menu(placeholder, page=page),
-            placeholder_js=placeholder_toolbar_js,
+            placeholder_js=json.dumps(placeholder_toolbar_js),
         )
         return mark_safe(placeholder_structure_is)
 
@@ -703,7 +707,7 @@ class StructureRenderer(BaseRenderer):
     def render_plugin(self, instance, page=None):
         placeholder_cache = self._rendered_plugins_by_placeholder.setdefault(instance.placeholder_id, {})
         placeholder_cache.setdefault('plugins', []).append(instance)
-        return self.get_plugin_toolbar_js(instance, page=page)
+        return self.get_plugin_toolbar_data(instance, page=page)
 
     def render_plugins(self, placeholder, language, page=None):
         template = page.get_template() if page else None

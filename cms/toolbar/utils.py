@@ -21,7 +21,7 @@ from cms.utils.conf import get_cms_setting
 from cms.utils.urlutils import admin_reverse
 
 
-def get_placeholder_toolbar_js(placeholder, allowed_plugins=None):
+def get_placeholder_toolbar_data(placeholder, allowed_plugins=None):
     label = placeholder.get_label() or ''
     help_text = gettext(
         'Add plugin to placeholder "%(placeholder_label)s"'
@@ -38,6 +38,15 @@ def get_placeholder_toolbar_js(placeholder, allowed_plugins=None):
             'copy_plugin': admin_reverse('cms_placeholder_copy_plugins'),
         }
     }
+    return [f"cms-placeholder-{placeholder.pk}", data]
+
+
+def get_placeholder_toolbar_js(placeholder, allowed_plugins=None):
+    import warnings
+
+    warnings.warn("get_placeholder_toolbar_js is deprecated. Use get_placeholder_toolbar_data instead.",
+                  RemovedInDjangoCMS43Warning, stacklevel=2)
+    data = get_placeholder_toolbar_data(placeholder, allowed_plugins=allowed_plugins)
     return PLACEHOLDER_TOOLBAR_JS % {'pk': placeholder.pk, 'config': json.dumps(data)}
 
 
@@ -55,12 +64,21 @@ def get_plugin_toolbar_info(plugin, children=None, parents=None):
     return data
 
 
-def get_plugin_toolbar_js(plugin, children=None, parents=None):
+def get_plugin_toolbar_data(plugin, children=None, parents=None):
     data = get_plugin_toolbar_info(
         plugin,
         children=children,
         parents=parents,
     )
+    return [f"cms-plugin-{plugin.pk}", data]
+
+
+def get_plugin_toolbar_js(plugin, children=None, parents=None):
+    import warnings
+
+    warnings.warn("get_plugin_toolbar_js is deprecated. Use get_plugin_toolbar_data instead.",
+                  RemovedInDjangoCMS43Warning, stacklevel=2)
+    data = get_plugin_toolbar_data(plugin, children=children, parents=parents)
     return PLUGIN_TOOLBAR_JS % {'pk': plugin.pk, 'config': json.dumps(data)}
 
 

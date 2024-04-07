@@ -1,3 +1,4 @@
+import json
 from collections import deque
 
 from django.template import Context
@@ -45,7 +46,7 @@ class TestStructureRenderer(CMSTestCase):
         cms_page = create_page("page", 'nav_playground.html', "en")
         renderer = self.get_renderer()
         placeholder = cms_page.get_placeholders("en").get(slot='body')
-        content = renderer.get_placeholder_toolbar_js(placeholder, cms_page)
+        content = json.dumps(renderer.get_placeholder_toolbar_data(placeholder, cms_page))
 
         expected_bits = [
             '"MultiColumnPlugin"',
@@ -65,7 +66,7 @@ class TestStructureRenderer(CMSTestCase):
         conf = {placeholder.slot: {'name': 'Content-with-dash'}}
 
         with self.settings(CMS_PLACEHOLDER_CONF=conf):
-            content = renderer.get_placeholder_toolbar_js(placeholder, cms_page)
+            content = json.dumps(renderer.get_placeholder_toolbar_data(placeholder, cms_page))
 
         expected_bits = [
             '"MultiColumnPlugin"',
