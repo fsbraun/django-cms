@@ -1,5 +1,5 @@
 {% extends "admin/change_form.html" %}
-{% load i18n admin_urls static admin_modify admin_urls cms_admin cms_static %}
+{% load i18n static admin_modify admin_urls cms_admin cms_static %}
 
 {% block title %}{% if add %}{% trans 'Add a page' %}{% else %}{% trans "Change a page" %}{% endif %}{% endblock %}
 
@@ -30,9 +30,11 @@
     {% get_preview_url original as admin_url %}
     {% if not popup and not add %}
         <ul class="object-tools hide-in-modal">
-            <li>
-                <a href="{{ admin_url }}" target="_parent">{% trans "View on site" %}</a>
-            </li>
+            {% block object-tools-items %}
+                <li>
+                    <a href="{{ admin_url }}" target="_parent">{% trans "View on site" %}</a>
+                </li>
+            {% endblock %}
         </ul>
     {% endif %}
 {% endblock %}

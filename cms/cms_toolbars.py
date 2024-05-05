@@ -636,9 +636,7 @@ class PageToolbar(CMSToolbar):
 
             # page settings
             page_settings_url = add_url_parameters(page_settings_url, language=self.toolbar.request_language)
-            settings_disabled = not edit_mode or not can_change
-            current_page_menu.add_modal_item(_('Page settings'), url=page_settings_url, disabled=settings_disabled,
-                                             on_close=refresh)
+            current_page_menu.add_modal_item(_('Page settings'), url=page_settings_url, on_close=refresh)
 
             # advanced settings
             advanced_url = add_url_parameters(advanced_url, language=self.toolbar.request_language)

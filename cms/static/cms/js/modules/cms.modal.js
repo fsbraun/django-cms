@@ -894,6 +894,7 @@ class Modal {
             var contents;
             var body;
             var innerTitle;
+            var innerSubtitle;
             var bc;
 
             // check if iframe can be accessed
@@ -1036,18 +1037,24 @@ class Modal {
                 iframe.show();
                 // set title of not provided
                 innerTitle = contents.find('#content h1:eq(0)');
+                innerSubtitle = contents.find('#content h2:eq(0)');
 
                 // case when there is no prefix
                 // istanbul ignore next: never happens
                 if (opts.title === undefined && that.ui.titlePrefix.text() === '') {
                     bc = contents.find('.breadcrumbs').contents();
                     that.ui.titlePrefix.text(bc.eq(bc.length - 1).text().replace('›', '').trim());
-                }
-
-                if (titlePrefix.text().trim() === '') {
-                    titlePrefix.text(innerTitle.text());
-                } else {
+                } else if (opts.title) {
+                    titlePrefix.text(opts.title);
                     titleSuffix.text(innerTitle.text());
+                } else {
+                    titlePrefix.text(innerTitle.text());
+                    if (innerSubtitle) {
+                        titleSuffix.text(innerSubtitle.text());
+                        innerSubtitle.remove();
+                    } else {
+                        titleSuffix.text('');
+                    }
                 }
                 innerTitle.remove();
 
