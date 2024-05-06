@@ -28,6 +28,7 @@ from cms.utils.i18n import get_language_dict, get_language_tuple
 from cms.utils.page_permissions import (
     user_can_change_page,
     user_can_delete_page,
+    user_can_view_page,
 )
 from cms.utils.urlutils import add_url_parameters, admin_reverse
 from menus.utils import DefaultLanguageChanger
@@ -562,7 +563,11 @@ class PageToolbar(CMSToolbar):
                 page=self.page,
                 site=self.current_site,
             )
-
+            can_view = user_can_view_page(
+                user=self.request.user,
+                page=self.page,
+                site=self.current_site,
+            )
             # menu for current page
             # NOTE: disabled if the current path is "deeper" into the
             # application's url patterns than its root. This is because
@@ -636,6 +641,7 @@ class PageToolbar(CMSToolbar):
 
             # page settings
             page_settings_url = add_url_parameters(page_settings_url, language=self.toolbar.request_language)
+            disabled = not can_view
             current_page_menu.add_modal_item(_('Page settings'), url=page_settings_url, on_close=refresh)
 
             # advanced settings

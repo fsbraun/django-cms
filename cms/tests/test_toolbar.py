@@ -652,9 +652,12 @@ class ToolbarTests(ToolbarTestBase):
         # Logo + page-menu + admin-menu + color scheme + logout
         self.assertEqual(len(items), 5, items)
         page_items = items[1].get_items()
-        # The page menu should only have the "Create page" item enabled.
+        # The page menu should only have the "Create page" and "Page settings" items enabled.
+        allowed_items = ["Create Page", "Page settings..."]
         self.assertFalse(page_items[0].disabled)
-        self.assertTrue(all(item.disabled for item in page_items[1:] if hasattr(item, 'disabled')))
+        self.assertTrue(all(
+            getattr(item, "disabled", True) for item in page_items if getattr(item, "name", "") not in allowed_items
+        ))
         admin_items = request.toolbar.get_or_create_menu(ADMIN_MENU_IDENTIFIER, 'Test').get_items()
         self.assertEqual(len(admin_items), 14, admin_items)
 
