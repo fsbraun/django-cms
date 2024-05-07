@@ -297,3 +297,16 @@ def submit_row_plugin(context):
     if context.get('original') is not None:
         ctx['original'] = context['original']
     return ctx
+
+@register.filter
+def has_readonly_fields(adminform):
+    for name, fieldset in adminform.fieldsets:
+        for field in fieldset['fields']:
+            if isinstance(field, (list, tuple)):
+                for f in field:
+                    if f in adminform.readonly_fields:
+                        return True
+            else:
+                if field in adminform.readonly_fields:
+                    return True
+    return False

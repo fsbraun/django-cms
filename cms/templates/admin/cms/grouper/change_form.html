@@ -1,4 +1,4 @@
-{% extends "admin/change_form.html" %}{% load i18n %}
+{% extends "admin/change_form.html" %}{% load i18n cms_admin %}
 {% block field_sets %}
   {% block language-tabs %}
     {% if language_tabs %}
@@ -12,9 +12,9 @@
       </div>
     {% endif %}
   {% endblock %}
-  {% if content_instance.versions and content_instance.versions.first.state != "draft" %}
+  {% if adminform|has_readonly_fields %}
     <div class="errornote">
-      <p><i>{% trans "Some fields cannot be changed since they are read-only content." %}</i></p>
+      <i>{% trans "Some fields cannot be changed since they are read-only content." %}</i>
     </div>
   {% endif %}
   {{ block.super }}
