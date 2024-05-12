@@ -391,6 +391,7 @@
         font-weight: bold;
         color: $gray-darkest;
         background: none;
+
         &:dir(rtl) {
             // inline-start & inline-end are not widely supported
             float: right;
@@ -451,6 +452,7 @@
     float: right;
     min-width: $pagetree-cell-inner-height;
     height: $pagetree-cell-inner-height;
+
     &:dir(rtl) {
         // inline-start & inline-end are not widely supported
         float: left;
