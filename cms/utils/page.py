@@ -46,7 +46,7 @@ def get_clean_username(user):
     return username
 
 
-def get_page_queryset(site, draft=True, published=False):
+def get_page_queryset(site):
     from cms.models import Page
 
     return Page.objects.on_site(site)

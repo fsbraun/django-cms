@@ -32,7 +32,7 @@ class MenusFixture:
 
 
 class ExtendedMenusFixture:
-    def create_fixtures(self):
+    def create_fixtures(self, target=None):
         """
         Tree from fixture:
 
@@ -53,18 +53,20 @@ class ExtendedMenusFixture:
             'language': 'en',
         }
         with self.settings(CMS_MODERATOR=False, CMS_PERMISSION=False):
-            p1 = create_page('P1', in_navigation=True, **defaults)
-            p1.set_as_homepage()
-            p4 = create_page('P4', in_navigation=True, **defaults)
-            p6 = create_page('P6', in_navigation=False, **defaults)
+            p1 = create_page('P1', in_navigation=True, parent=target, **defaults)
+            if target is None:
+                p1.set_as_homepage()
+            p4 = create_page('P4', in_navigation=True, parent=target, **defaults)
+            p6 = create_page('P6', in_navigation=False, parent=target, **defaults)
             p2 = create_page('P2', in_navigation=True, parent=p1, **defaults)
-            create_page('P3', in_navigation=True, parent=p2, **defaults)
-            create_page('P5', in_navigation=True, parent=p4, **defaults)
-            create_page('P7', in_navigation=True, parent=p6, **defaults)
-            create_page('P8', in_navigation=True, parent=p6, **defaults)
+            p3 = create_page('P3', in_navigation=True, parent=p2, **defaults)
+            p5 = create_page('P5', in_navigation=True, parent=p4, **defaults)
+            p7 = create_page('P7', in_navigation=True, parent=p6, **defaults)
+            p8 = create_page('P8', in_navigation=True, parent=p6, **defaults)
             p9 = create_page('P9', in_navigation=True, parent=p1, **defaults)
             p10 = create_page('P10', in_navigation=True, parent=p9, **defaults)
-            create_page('P11', in_navigation=True, parent=p10, **defaults)
+            p11 = create_page('P11', in_navigation=True, parent=p10, **defaults)
+            return [p3, p5, p7, p8, p11]
 
 
 class SubMenusFixture:

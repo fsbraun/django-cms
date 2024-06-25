@@ -26,13 +26,13 @@ from menus.models import CacheKey
 logger = getLogger('menus')
 
 
-def _build_nodes_inner_for_one_menu(nodes, menu_class_name):
+def _build_nodes_inner_for_one_menu(nodes, menu_class_name, done_nodes=None):
     """
     This is an easier to test "inner loop" building the menu tree structure
     for one menu (one language, one site)
     """
-    done_nodes = {}  # Dict of node.id:Node
-    final_nodes = []
+    if done_nodes is None:
+        done_nodes = {}  # Dict of node.id:Node
 
     # This is to prevent infinite loops - we need to compare the number of
     # times we see a specific node to "something", and for the time being,
@@ -40,7 +40,7 @@ def _build_nodes_inner_for_one_menu(nodes, menu_class_name):
     list_total_length = len(nodes)
 
     while nodes:
-        # For when the node has a parent_id but we haven't seen it yet.
+        # For when the node has a parent_id, but we haven't seen it yet.
         # We must not append it to the final list in this case!
         should_add_to_final_list = True
 
@@ -64,7 +64,7 @@ def _build_nodes_inner_for_one_menu(nodes, menu_class_name):
             parent = done_nodes[node.namespace][node.parent_id]
             parent.children.append(node)
             node.parent = parent
-        # If it has a parent_id but we haven't seen it yet...
+        # If it has a parent_id, but we haven't seen it yet...
         elif node.parent_id:
             # We check for infinite loops here, by comparing the number of
             # times we "saw" this node to the number of nodes in the list
@@ -75,10 +75,15 @@ def _build_nodes_inner_for_one_menu(nodes, menu_class_name):
             should_add_to_final_list = False
 
         if should_add_to_final_list:
-            final_nodes.append(node)
             # add it to the "seen" list
             done_nodes[node.namespace][node.id] = node
-    return final_nodes
+    return done_nodes
+
+def _as_node_list(node_dict):
+    """
+    Turns node dictionary into node list.
+    """
+    return [node for ns in node_dict for node in list(node_dict[ns].values())]
 
 
 def _get_menu_class_for_instance(menu_class, instance):
@@ -151,7 +156,7 @@ class MenuRenderer:
         - We iterate on the list of nodes.
         - We store encountered nodes in a dict (with namespaces):
             done_nodes[<namespace>][<node's id>] = node
-        - When a node has a parent defined, we lookup that parent in done_nodes
+        - When a node has a parent defined, we look up that parent in done_nodes
             if it's found:
                 set the node as the node's parent's child (re-read this)
             else:
@@ -165,20 +170,20 @@ class MenuRenderer:
             # Only use the cache if the key is present in the database.
             # This prevents a condition where keys which have been removed
             # from the database due to a change in content, are still used.
-            return cached_nodes
+            return _as_node_list(cached_nodes)
 
-        final_nodes = []
         toolbar = getattr(self.request, 'toolbar', None)
 
+        nodes = []
         for menu_class_name in self.menus:
             menu = self.get_menu(menu_class_name)
 
             try:
-                nodes = menu.get_nodes(self.request)
+                menu_nodes = menu.get_nodes(self.request)
+                nodes.extend(menu_nodes)
             except NoReverseMatch:
                 # Apps might raise NoReverseMatch if an apphook does not yet
                 # exist, skip them instead of crashing
-                nodes = []
                 if toolbar and toolbar.is_staff:
                     messages.error(
                         self.request,
@@ -187,7 +192,8 @@ class MenuRenderer:
                     )
                 logger.error("Menu %s could not be loaded." % menu_class_name, exc_info=True)
             # nodes is a list of navigation nodes (page tree in cms + others)
-            final_nodes += _build_nodes_inner_for_one_menu(nodes, menu_class_name)
+
+        final_nodes = _build_nodes_inner_for_one_menu(nodes, menu_class_name)
 
         cache.set(key, final_nodes, get_cms_setting('CACHE_DURATIONS')['menus'])
 
@@ -201,7 +207,7 @@ class MenuRenderer:
             # This way we can selectively invalidate per-site and per-language,
             # since the cache is shared but the keys aren't
             CacheKey.objects.create(key=key, language=self.request_language, site=self.site.pk)
-        return final_nodes
+        return _as_node_list(final_nodes)
 
     def _mark_selected(self, nodes):
         for node in nodes:
