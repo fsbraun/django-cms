@@ -995,7 +995,7 @@ class MenuTests(BaseMenuTest):
     def test_render_menu_with_invalid_language_and_page(self):
         """
         This tests an edge-case where the user requests a
-        language not configure for the current site
+        language not configured for the current site
         while having pages on the current site with unconfigured
         translations.
         """
@@ -1975,19 +1975,16 @@ class MenuPerformanceTestcase(ExtendedMenusFixture, BaseMenuTest):
     """Creates ~161k pages"""
     def setUp(self):
 
-        page_contents = []
-        pages = []
-
         def create_pages(level, parents):
             for parent in parents:
                 new = self.create_fixtures(target=parent)
-                if level < 3:
+                if level < 4:
                     create_pages(level + 1, new)
 
         super().setUp()
         create_pages(0, [None])
 
-    def test_menu_performance(self):
+    def x_test_menu_performance(self):
         import time
 
         print(f"Total pages: {Page.objects.count()}")
@@ -1995,11 +1992,9 @@ class MenuPerformanceTestcase(ExtendedMenusFixture, BaseMenuTest):
             menu_pool.discover_menus()
         request = self.get_request('/')
         renderer = menu_pool.get_renderer(request)
-        start_time = time.process_time()
-        for i in range(1):
-            renderer.get_nodes()
-        end_time = time.process_time()
-        input((end_time-start_time) * 100)
+        import cProfile
+        cProfile.runctx('renderer.get_nodes()', globals(), locals())
+        input()
 
         request = self.get_request('/')
         renderer = menu_pool.get_renderer(request)

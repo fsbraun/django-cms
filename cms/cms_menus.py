@@ -3,14 +3,14 @@ from typing import Optional
 from django.db.models.query import Prefetch, prefetch_related_objects
 from django.urls import reverse
 from django.utils.functional import SimpleLazyObject
-from django.utils.translation import override as force_language
 
 from cms import constants
 from cms.apphook_pool import apphook_pool
-from cms.models import EmptyPageContent, PageContent, PageUrl
+from cms.models import EmptyPageContent, Page, PageContent, PageUrl
 from cms.toolbar.utils import get_object_preview_url, get_toolbar_from_request
 from cms.utils.conf import get_cms_setting
 from cms.utils.i18n import (
+    force_language,
     get_fallback_languages,
     get_public_languages,
     hide_untranslated,
@@ -83,19 +83,24 @@ def get_menu_node_for_page(renderer, page, language, fallbacks=None, endpoint=Fa
     Returns:
         A CMSNavigationNode instance.
     """
-    if fallbacks is None:
-        fallbacks = []
+    for lang in [language] + (fallbacks or []):
+        page_content: PageContent = page.page_content_cache.get(lang)
+        if page_content:
+            break
+    else:
+        # No translation found
+        return None
 
     # These are simple to port over, since they are not calculated.
     # Other attributes will be added conditionally later.
     attr = {
         "is_page": True,
-        "soft_root": page.get_soft_root(language),
+        "soft_root": page_content.soft_root,
         "auth_required": page.login_required,
         "reverse_id": page.reverse_id,
     }
 
-    limit_visibility_in_menu = page.get_limit_visibility_in_menu(language)
+    limit_visibility_in_menu = page_content.limit_visibility_in_menu
 
     if limit_visibility_in_menu is constants.VISIBILITY_ALL:
         attr["visible_for_authenticated"] = True
@@ -113,8 +118,8 @@ def get_menu_node_for_page(renderer, page, language, fallbacks=None, endpoint=Fa
             extenders.append(f"{page.navigation_extenders}:{page.pk}")
     # Is this page an apphook? If so, we need to handle the apphooks's nodes
     # Only run this if we have a translation in the requested language for this
-    # object. The title cache should have been prepopulated in CMSMenu.get_nodes
-    # but otherwise, just request the title normally
+    # object. The page content cache should have been prepopulated in CMSMenu.get_nodes
+    # but otherwise, just request the page content normally
     if page.page_content_cache.get(language) and page.application_urls:
         # it means it is an apphook
         app = apphook_pool.get_apphook(page.application_urls)
@@ -134,31 +139,32 @@ def get_menu_node_for_page(renderer, page, language, fallbacks=None, endpoint=Fa
     if exts:
         attr["navigation_extenders"] = exts
 
-    for lang in [language] + fallbacks:
-        translation = page.page_content_cache.get(lang)
+    page_url = page.urls_cache[lang]
+    # Do we have a redirectURL?
+    attr["redirect_url"] = page_content.redirect  # save redirect URL if any
 
-        if translation:
-            page_url = page.urls_cache[lang]
-            # Do we have a redirectURL?
-            attr["redirect_url"] = translation.redirect  # save redirect URL if any
-
-            # Now finally, build the NavigationNode object and return it.
-            # The parent_id is manually set by the menu get_nodes method.
-            if endpoint:
-                url = get_object_preview_url(translation)
-            else:
-                url = translation.get_absolute_url()
-            ret_node = CMSNavigationNode(
-                title=translation.menu_title or translation.title,
-                url=url,
-                id=page.pk,
-                attr=attr,
-                visible=page.get_in_navigation(translation.language),
-                path=page_url.path or page_url.slug,
-                language=(translation.language if translation.language != language else None),
+    # Now finally, build the NavigationNode object and return it.
+    # The parent_id is manually set by the menu get_nodes method.
+    if endpoint:
+        url = get_object_preview_url(page_content)
+    else:
+        # Get the url without actually calling get_absolute_url, since we have all information
+        # available here already.
+        with force_language(lang):
+            url = (
+                reverse("pages-root") if page.is_home else
+                reverse("pages-details-by-slug", kwargs={"slug": page_url.path})
             )
-            return ret_node
-    return None
+    ret_node = CMSNavigationNode(
+        title=page_content.menu_title or page_content.title,
+        url=url,
+        id=page.pk,
+        attr=attr,
+        visible=page_content.in_navigation,
+        path=page_url.path or page_url.slug,
+        language=(page_content.language if page_content.language != language else None),
+    )
+    return ret_node
 
 
 class CMSNavigationNode(NavigationNode):
@@ -198,12 +204,19 @@ class CMSMenu(Menu):
     based on a site's :class:`cms.models.pagemodel.Page` objects.
     """
 
-    def get_nodes(self, request):
+    def get_nodes(self, request, start_node: Page = None):
+        """Return a list of NavigationNode instances based on the site's Page objects.
+        If a start_node is provided, only the descendants of that node will be included."""
         site = self.renderer.site
         lang = self.renderer.request_language
         toolbar = get_toolbar_from_request(request)
 
-        pages = get_page_queryset(site)
+        if start_node is None:
+            # All page's queryset for the site
+            pages = get_page_queryset(site)
+        else:
+            # Returns a queryset, too
+            pages = start_node.get_descendant_pages()
 
         if is_valid_site_language(lang, site_id=site.pk):
             _valid_language = True
@@ -224,7 +237,7 @@ class CMSMenu(Menu):
             # The request language is not configured for the current site.
             # Fallback to all configured public languages for the current site.
             languages = get_public_languages(site.pk)
-            fallbacks = languages
+            fallbacks = languages  # TODO: Remove this?
 
         pages = (
             pages.filter(pagecontent_set__language__in=languages)
