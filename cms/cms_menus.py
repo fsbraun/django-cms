@@ -1,4 +1,5 @@
-from typing import Optional
+from collections import defaultdict
+from typing import List, Optional
 
 from django.db.models.query import Prefetch, prefetch_related_objects
 from django.urls import reverse
@@ -199,12 +200,41 @@ class CMSNavigationNode(NavigationNode):
         return page_id == self.id
 
 
+def _get_menu_languages(site, lang):
+    if is_valid_site_language(lang, site_id=site.pk):
+        _valid_language = True
+        _hide_untranslated = hide_untranslated(lang, site.pk)
+    else:
+        _valid_language = False
+        _hide_untranslated = False
+
+    if _valid_language:
+        # The request language has been explicitly configured
+        # for the current site.
+        if _hide_untranslated:
+            fallbacks = []
+        else:
+            fallbacks = get_fallback_languages(lang, site_id=site.pk)
+        languages = [lang] + [_lang for _lang in fallbacks if _lang != lang]
+    else:
+        # The request language is not configured for the current site.
+        # Fallback to all configured public languages for the current site.
+        languages = get_public_languages(site.pk)
+        fallbacks = languages
+    return languages, fallbacks
+
+
 class CMSMenu(Menu):
     """Subclass of :class:`menus.base.Menu`. Its :meth:`~menus.base.Menu.get_nodes()` creates a list of NavigationNodes
     based on a site's :class:`cms.models.pagemodel.Page` objects.
     """
 
-    def get_nodes(self, request, start_node: Page = None):
+    def get_nodes(self, request) -> List['NavigationNode']:
+        menu_nodes = defaultdict(dict)
+        self.get_nodes_dict(request, menu_nodes)
+        return list(menu_nodes[self.__class__.__name__].values())
+
+    def get_nodes_dict(self, request, menu_nodes, start_node: Page = None):
         """Return a list of NavigationNode instances based on the site's Page objects.
         If a start_node is provided, only the descendants of that node will be included."""
         site = self.renderer.site
@@ -218,27 +248,7 @@ class CMSMenu(Menu):
             # Returns a queryset, too
             pages = start_node.get_descendant_pages()
 
-        if is_valid_site_language(lang, site_id=site.pk):
-            _valid_language = True
-            _hide_untranslated = hide_untranslated(lang, site.pk)
-        else:
-            _valid_language = False
-            _hide_untranslated = False
-
-        if _valid_language:
-            # The request language has been explicitly configured
-            # for the current site.
-            if _hide_untranslated:
-                fallbacks = []
-            else:
-                fallbacks = get_fallback_languages(lang, site_id=site.pk)
-            languages = [lang] + [_lang for _lang in fallbacks if _lang != lang]
-        else:
-            # The request language is not configured for the current site.
-            # Fallback to all configured public languages for the current site.
-            languages = get_public_languages(site.pk)
-            fallbacks = languages  # TODO: Remove this?
-
+        languages, fallbacks = _get_menu_languages(site, lang)
         pages = (
             pages.filter(pagecontent_set__language__in=languages)
             .select_related("node")
@@ -278,6 +288,9 @@ class CMSMenu(Menu):
         # Maps a node id to its page id
         node_id_to_page = {}
 
+        # remember root nodes
+        root_nodes = []
+
         def _page_to_node(page):
             # EmptyPageContent is used to prevent the cms from trying
             # to find a translation in the database
@@ -298,8 +311,6 @@ class CMSMenu(Menu):
             )
             return menu_node
 
-        menu_nodes = []
-
         for page in pages:
             node = page.node
             parent_id = node_id_to_page.get(node.parent_id)
@@ -318,11 +329,39 @@ class CMSMenu(Menu):
                     # When the homepage is hidden from navigation,
                     # we need to cut all its direct children from it.
                     menu_node.parent_id = None
+                    root_nodes.append(menu_node)
                 else:
                     menu_node.parent_id = parent_id
+                    if not parent_id:
+                        root_nodes.append(menu_node)
                 node_id_to_page[node.pk] = page.pk
-                menu_nodes.append(menu_node)
+                menu_node.namespace = self.__class__.__name__
+                menu_nodes[menu_node.namespace][menu_node.id] = menu_node
         return menu_nodes
+
+    def update_node(self, page):
+        """
+        Update a NavigationNode instance based on a Page object.
+
+        Args:
+            page: The Page object to update.
+        """
+        for node in self.renderer.nodes:
+            if node.id == page.pk:
+                menu_node = get_menu_node_for_page(
+                    self.renderer,
+                    page,
+                    language=self.renderer.request_language,
+                    fallbacks=self.renderer.fallbacks,
+                )
+                if menu_node:
+                    node.title = menu_node.title
+                    node.url = menu_node.url
+                    node.attr = menu_node.attr
+                    node.visible = menu_node.visible
+                    node.path = menu_node.path
+                    node.language = menu_node.language
+                    break
 
 
 menu_pool.register_menu(CMSMenu)

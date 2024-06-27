@@ -1,3 +1,4 @@
+from collections import defaultdict
 from typing import Any, Dict, List, Optional
 
 from django.utils.encoding import smart_str
@@ -30,6 +31,14 @@ class Menu:
             A list of NavigationNode instances.
         """
         raise NotImplementedError
+
+    def get_nodes_dict(self, request, nodes: dict = None) -> dict:
+        if nodes is None:
+            nodes = defaultdict(dict)
+        for node in self.get_nodes(request):
+            # Implicit namespacing by menu.__name__
+            node.namespace = node.namespace or self.namespace
+            nodes[node.namespace][node.id] = node
 
 
 class Modifier:

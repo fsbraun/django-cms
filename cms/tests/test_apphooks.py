@@ -93,8 +93,6 @@ class ApphooksTestCase(CMSTestCase):
                                        "en", created_by=superuser, parent=child_page, apphook=apphook,
                                        apphook_namespace=namespace)
         create_page_content("de", child_child_page.get_title(), child_child_page)
-        # publisher_public is set to draft on publish, issue with onetoone reverse
-        child_child_page = self.reload(child_child_page)
 
         if isinstance(content_langs, str):
             contents = child_child_page.get_content_obj(content_langs)
@@ -909,8 +907,8 @@ class ApphooksTestCase(CMSTestCase):
         renderer = menu_pool.get_renderer(request)
         nodes = renderer.get_nodes()
         nodes_urls = [node.url for node in nodes]
-        self.assertTrue(reverse('sample-account') in nodes_urls)
-        self.assertFalse('/en/child_page/page2/' in nodes_urls)
+        self.assertIn(reverse('sample-account'), nodes_urls)
+        self.assertNotIn('/en/child_page/page2/', nodes_urls)
 
         self.reload_urls()
         self.apphook_clear()

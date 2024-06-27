@@ -1,3 +1,4 @@
+from collections import defaultdict
 from functools import partial
 from logging import getLogger
 
@@ -26,58 +27,39 @@ from menus.models import CacheKey
 logger = getLogger('menus')
 
 
-def _build_nodes_inner_for_one_menu(nodes, menu_class_name, done_nodes=None):
+def _build_nodes_inner_for_whole_menu(nodes):
     """
     This is an easier to test "inner loop" building the menu tree structure
     for one menu (one language, one site)
     """
-    if done_nodes is None:
-        done_nodes = {}  # Dict of node.id:Node
 
-    # This is to prevent infinite loops - we need to compare the number of
-    # times we see a specific node to "something", and for the time being,
-    # it's the total number of nodes
-    list_total_length = len(nodes)
+    to_delete = []  # Keep a list of nodes with non-existing parents for deletion
 
-    while nodes:
-        # For when the node has a parent_id, but we haven't seen it yet.
-        # We must not append it to the final list in this case!
-        should_add_to_final_list = True
+    for namespace, inner_nodes in nodes.items():
+        for node_id, node in inner_nodes.items():
+            # For when the node has a parent_id, but we haven't seen it yet.
+            # We must not append it to the final list in this case!
 
-        node = nodes.pop(0)
+            # If we have seen the parent_id already...
+            if node.parent_id in nodes.get(node.namespace or namespace, {}):
+                # Implicit parent namespace by menu.__name__
+                node.parent_namespace = node.parent_namespace or namespace
+                parent = nodes[node.namespace or namespace][node.parent_id]
+                parent.children.append(node)
+                node.parent = parent
+            elif node.parent_id:
+                node.namespace = node.namespace or namespace
+                to_delete.append(node)
 
-        # Increment the "seen" counter for this specific node.
-        node._counter = getattr(node, '_counter', 0) + 1
+    # Broken tree: delete all nodes (and their descendants) that have a non-existing parent
+    for node in to_delete:
+        namespace = node.namespace
+        for desc in node.get_descendants() + [node]:
+            desc.parent = None  # Remove partially calculated relations
+            desc.children = []
+            del nodes[desc.namespace or node.namespace][desc.id]
 
-        # Implicit namespacing by menu.__name__
-        if not node.namespace:
-            node.namespace = menu_class_name
-        if node.namespace not in done_nodes:
-            # We need to create the namespace dict to avoid KeyErrors
-            done_nodes[node.namespace] = {}
-
-        # If we have seen the parent_id already...
-        if node.parent_id in done_nodes[node.namespace]:
-            # Implicit parent namespace by menu.__name__
-            if not node.parent_namespace:
-                node.parent_namespace = menu_class_name
-            parent = done_nodes[node.namespace][node.parent_id]
-            parent.children.append(node)
-            node.parent = parent
-        # If it has a parent_id, but we haven't seen it yet...
-        elif node.parent_id:
-            # We check for infinite loops here, by comparing the number of
-            # times we "saw" this node to the number of nodes in the list
-            if node._counter < list_total_length:
-                nodes.append(node)
-            # Never add this node to the final list until it has a real
-            # parent (node.parent)
-            should_add_to_final_list = False
-
-        if should_add_to_final_list:
-            # add it to the "seen" list
-            done_nodes[node.namespace][node.id] = node
-    return done_nodes
+    return nodes
 
 def _as_node_list(node_dict):
     """
@@ -174,13 +156,12 @@ class MenuRenderer:
 
         toolbar = getattr(self.request, 'toolbar', None)
 
-        nodes = []
+        nodes = defaultdict(dict)
         for menu_class_name in self.menus:
             menu = self.get_menu(menu_class_name)
-
+            menu.namespace = menu_class_name
             try:
-                menu_nodes = menu.get_nodes(self.request)
-                nodes.extend(menu_nodes)
+                menu.get_nodes_dict(self.request, nodes)
             except NoReverseMatch:
                 # Apps might raise NoReverseMatch if an apphook does not yet
                 # exist, skip them instead of crashing
@@ -193,7 +174,7 @@ class MenuRenderer:
                 logger.error("Menu %s could not be loaded." % menu_class_name, exc_info=True)
             # nodes is a list of navigation nodes (page tree in cms + others)
 
-        final_nodes = _build_nodes_inner_for_one_menu(nodes, menu_class_name)
+        final_nodes = _build_nodes_inner_for_whole_menu(nodes)
 
         cache.set(key, final_nodes, get_cms_setting('CACHE_DURATIONS')['menus'])
 

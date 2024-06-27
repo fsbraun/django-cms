@@ -35,7 +35,7 @@ from cms.test_utils.util.mock import AttributeObject
 from cms.utils import get_current_site
 from cms.utils.conf import get_cms_setting
 from menus.base import NavigationNode
-from menus.menu_pool import _as_node_list, _build_nodes_inner_for_one_menu, menu_pool
+from menus.menu_pool import _as_node_list, _build_nodes_inner_for_whole_menu, menu_pool
 from menus.models import CacheKey
 from menus.utils import cut_levels, find_selected, mark_descendants
 
@@ -49,7 +49,9 @@ class BaseMenuTest(CMSTestCase):
         node4 = NavigationNode('4', '/4/', 4, 2)
         node5 = NavigationNode('5', '/5/', 5)
         nodes = [node1, node2, node3, node4, node5]
-        tree = _as_node_list(_build_nodes_inner_for_one_menu([n for n in nodes], "test"))
+        menu_class_name = "Menu"
+        nodes_dict = {menu_class_name: {node.id: node for node in nodes}}
+        tree = _as_node_list(_build_nodes_inner_for_whole_menu(nodes_dict))
         request = self.get_request(path)
         renderer = menu_pool.get_renderer(request)
         renderer.apply_modifiers(tree, request)
@@ -838,9 +840,10 @@ class MenuTests(BaseMenuTest):
 
         menu_class_name = 'Test'
         nodes = [node1, node2, node3, node4, node5, ]
+        nodes_dict = {menu_class_name: {node.id: node for node in nodes}}
         len_nodes = len(nodes)
 
-        final_list = _as_node_list(_build_nodes_inner_for_one_menu(nodes, menu_class_name))
+        final_list = _as_node_list(_build_nodes_inner_for_whole_menu(nodes_dict))
         self.assertEqual(len(final_list), len_nodes)
 
         self.assertEqual(node1.parent, node2)
@@ -884,8 +887,8 @@ class MenuTests(BaseMenuTest):
 
         menu_class_name = 'Test'
         nodes = [node1, node2, node3, node4, node5, ]
-
-        final_list = _build_nodes_inner_for_one_menu(nodes, menu_class_name)
+        nodes_dict = {menu_class_name: {node.id: node for node in nodes}}
+        final_list = _build_nodes_inner_for_whole_menu(nodes_dict)
         final_list = _as_node_list(final_list)
 
         self.assertEqual(len(final_list), 3)
@@ -1996,6 +1999,7 @@ class MenuPerformanceTestcase(ExtendedMenusFixture, BaseMenuTest):
         cProfile.runctx('renderer.get_nodes()', globals(), locals())
         input()
 
+        menu_pool.clear()
         request = self.get_request('/')
         renderer = menu_pool.get_renderer(request)
         start_time = time.process_time()
