@@ -51,9 +51,9 @@ class BaseMenuTest(CMSTestCase):
         nodes = [node1, node2, node3, node4, node5]
         menu_class_name = "Menu"
         nodes_dict = {menu_class_name: {node.id: node for node in nodes}}
-        tree = _as_node_list(_build_nodes_inner_for_whole_menu(nodes_dict))
         request = self.get_request(path)
         renderer = menu_pool.get_renderer(request)
+        tree = renderer._mark_nodes(_build_nodes_inner_for_whole_menu(nodes_dict))
         renderer.apply_modifiers(tree, request)
         return tree, nodes
 
@@ -1973,6 +1973,7 @@ class SoftrootTests(CMSTestCase):
         self.assertEqual(len(cmsnode.children), 0)
         self.assertEqual(len(shopnode.children), 0)
         self.assertEqual(len(peoplenode.children), 0)
+
 
 class MenuPerformanceTestcase(ExtendedMenusFixture, BaseMenuTest):
     """Creates ~161k pages"""

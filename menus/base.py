@@ -2,6 +2,7 @@ from collections import defaultdict
 from typing import Any, Dict, List, Optional
 
 from django.utils.encoding import smart_str
+from django.utils.functional import cached_property
 
 
 class Menu:
@@ -84,8 +85,6 @@ class NavigationNode:
 
     selected: bool = False
     sibling: bool = False
-    ancestor: bool = False
-    descendant: bool = False
 
     def __init__(
         self,
@@ -182,3 +181,24 @@ class NavigationNode:
         """
         node_abs_url = self.get_absolute_url()
         return node_abs_url == request.path
+
+    @property
+    def is_leaf_node(self) -> bool:
+        """
+        Indicates whether the node is a leaf node.
+        """
+        return not self.children
+
+    @cached_property
+    def ancestor(self) -> bool:
+        """
+        Indicates whether the node is an ancestor of the currently selected node.
+        """
+        return any([descendant.selected for descendant in self.get_descendants()])
+
+    @cached_property
+    def descendant(self) -> bool:
+        """
+        Indicates whether the node is a descendant of the currently selected node.
+        """
+        return any([ancestor.selected for ancestor in self.get_ancestors()])

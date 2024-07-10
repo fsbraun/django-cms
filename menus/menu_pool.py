@@ -1,6 +1,7 @@
 from collections import defaultdict
 from functools import partial
 from logging import getLogger
+from typing import Optional
 
 from django.contrib import messages
 from django.contrib.sites.models import Site
@@ -20,11 +21,14 @@ from cms.utils.i18n import (
     get_default_language_for_site,
     is_language_prefix_patterns_used,
 )
-from menus.base import Menu
+from menus.base import Menu, NavigationNode
 from menus.exceptions import NamespaceAlreadyRegistered
 from menus.models import CacheKey
 
 logger = getLogger('menus')
+
+
+ROOT_NODES = None
 
 
 def _build_nodes_inner_for_whole_menu(nodes):
@@ -33,7 +37,8 @@ def _build_nodes_inner_for_whole_menu(nodes):
     for one menu (one language, one site)
     """
 
-    to_delete = []  # Keep a list of nodes with non-existing parents for deletion
+    to_delete = set()  # Keep a list of nodes with non-existing parents for deletion
+    root_nodes = list()
 
     for namespace, inner_nodes in nodes.items():
         for node_id, node in inner_nodes.items():
@@ -49,7 +54,10 @@ def _build_nodes_inner_for_whole_menu(nodes):
                 node.parent = parent
             elif node.parent_id:
                 node.namespace = node.namespace or namespace
-                to_delete.append(node)
+                to_delete.add(node)
+            else:
+                # No parent, this is a root node.
+                root_nodes.append(node)
 
     # Broken tree: delete all nodes (and their descendants) that have a non-existing parent
     for node in to_delete:
@@ -57,15 +65,17 @@ def _build_nodes_inner_for_whole_menu(nodes):
         for desc in node.get_descendants() + [node]:
             desc.parent = None  # Remove partially calculated relations
             desc.children = []
-            del nodes[desc.namespace or node.namespace][desc.id]
+            del nodes[desc.namespace or namespace][desc.id]
 
+    nodes[ROOT_NODES] = root_nodes
     return nodes
+
 
 def _as_node_list(node_dict):
     """
     Turns node dictionary into node list.
     """
-    return [node for ns in node_dict for node in list(node_dict[ns].values())]
+    return [node for ns, nd in node_dict.items() if isinstance(nd, dict) for node in nd.values() ]
 
 
 def _get_menu_class_for_instance(menu_class, instance):
@@ -85,6 +95,13 @@ class MenuRenderer:
     # the singleton menu pool from the menu rendering logic.
     # By doing this we can be sure that each request has its
     # private instance that will always have the same attributes.
+
+    selected: Optional[list[NavigationNode]] = None
+    #: The selected node, if any
+    post_cut: bool = False
+    #: Whether the nodes have been cut
+    nodes_by_level: Optional[list[list[NavigationNode]]] = None
+    #: The nodes grouped by level
 
     def __init__(self, pool, request):
         self.pool = pool
@@ -152,7 +169,7 @@ class MenuRenderer:
             # Only use the cache if the key is present in the database.
             # This prevents a condition where keys which have been removed
             # from the database due to a change in content, are still used.
-            return _as_node_list(cached_nodes)
+            return cached_nodes
 
         toolbar = getattr(self.request, 'toolbar', None)
 
@@ -175,7 +192,6 @@ class MenuRenderer:
             # nodes is a list of navigation nodes (page tree in cms + others)
 
         final_nodes = _build_nodes_inner_for_whole_menu(nodes)
-
         cache.set(key, final_nodes, get_cms_setting('CACHE_DURATIONS')['menus'])
 
         if not self.is_cached:
@@ -188,17 +204,38 @@ class MenuRenderer:
             # This way we can selectively invalidate per-site and per-language,
             # since the cache is shared but the keys aren't
             CacheKey.objects.create(key=key, language=self.request_language, site=self.site.pk)
-        return _as_node_list(final_nodes)
+        return final_nodes
 
-    def _mark_selected(self, nodes):
+    def _mark_children(self, nodes, level):
         for node in nodes:
-            node.selected = node.is_selected(self.request)
-        return nodes
+            node.level = level
+            if node.is_selected(self.request):
+                self.selected = node
+                if node.parent:
+                    for sibling in node.parent.children:
+                        sibling.sibling = True
+                for descendant in node.get_descendants():
+                    descendant.descendant = True
+                for ancestor in node.get_ancestors():
+                    ancestor.ancestor = True
+            self._mark_children(node.children, level + 1)
+
+    def _mark_nodes(self, nodes):
+        self.selected = []
+        for node in nodes[ROOT_NODES]:
+            node.level = 0
+            if node.is_selected(self.request):
+                node.selected = True
+                self.selected.append(node)
+                for sibling in nodes[ROOT_NODES]:
+                    sibling.sibling = True
+                for descendant in node.get_descendants():
+                    descendant.descendant = True
+            if node.children:
+                self._mark_children(node.children, 1)
+        return _as_node_list(nodes)
 
     def apply_modifiers(self, nodes, namespace=None, root_id=None, post_cut=False, breadcrumb=False):
-        if not post_cut:
-            nodes = self._mark_selected(nodes)
-
         # Only fetch modifiers when they're needed.
         # We can do this because unlike menu classes,
         # modifiers can't change on a request basis.
@@ -210,6 +247,7 @@ class MenuRenderer:
 
     def get_nodes(self, namespace=None, root_id=None, breadcrumb=False):
         nodes = self._build_nodes()
+        nodes = self._mark_nodes(nodes)
         nodes = self.apply_modifiers(
             nodes=nodes,
             namespace=namespace,

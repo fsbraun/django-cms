@@ -133,7 +133,7 @@ class ShowMenu(InclusionTag):
         if next_page:
             children = next_page.children
         else:
-            # new menu... get all the data so we can save a lot of queries
+            # new menu... get all the data, so we can save a lot of queries
             menu_renderer = context.get('cms_menu_renderer')
 
             if not menu_renderer:

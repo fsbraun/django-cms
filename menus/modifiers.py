@@ -175,6 +175,6 @@ def register():
     """
     Register the Marker, AuthVisibility, and Level modifiers to the menu pool.
     """
-    menu_pool.register_modifier(Marker)
+    # menu_pool.register_modifier(Marker)
     menu_pool.register_modifier(AuthVisibility)
-    menu_pool.register_modifier(Level)
+    # menu_pool.register_modifier(Level)
