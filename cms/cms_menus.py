@@ -336,7 +336,6 @@ class CMSMenu(Menu):
                 node_id_to_page[node.pk] = page.pk
                 menu_node.namespace = self.__class__.__name__
                 menu_nodes[menu_node.namespace][menu_node.id] = menu_node
-                menu_nodes.append(menu_node)
         return menu_nodes
 
     def update_node(self, page):
