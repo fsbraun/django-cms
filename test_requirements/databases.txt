@@ -1,2 +1,2 @@
-psycopg3
+psycopg
 mysqlclient==2.0.3
