@@ -95,10 +95,13 @@ load_nvm() {
             echo "curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.38.0/install.sh | bash"
             exit 1
         fi
+        cat "$NVM_DIR/nvm.sh"
+        
+
         # shellcheck disable=SC1090
         source "$NVM_DIR/nvm.sh"  # This loads nvm
     fi
-
+    declare -f nvm
     if ! declare -f nvm &> /dev/null; then
         error "Failed to load nvm??"
         exit 1
