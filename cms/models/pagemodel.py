@@ -108,7 +108,7 @@ class Page(MP_Node):
         blank=True,
         null=True,
     )
-    languages = models.CharField(
+    _languages = models.CharField(
         max_length=255,
         editable=False,
         blank=True,
@@ -687,6 +687,8 @@ class Page(MP_Node):
         return self.parent
 
     def get_languages(self):
+        self._get_page_content_cache(None, False, False)
+        return list(self.page_content_cache.keys())
         if self.languages:
             return sorted(self.languages.split(','))
         else:
@@ -702,11 +704,11 @@ class Page(MP_Node):
     def update_languages(self, languages):
         languages = ",".join(set(languages))
         # Update current instance
-        self.languages = languages
+        # self.languages = languages
         # Commit. It's important to not call save()
         # we'd like to commit only the languages field and without
         # any kind of signals.
-        self.update(languages=languages)
+        # self.update(languages=languages)
 
     def get_published_languages(self):
         return self.get_languages()

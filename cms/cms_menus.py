@@ -333,7 +333,6 @@ class CMSMenu(Menu):
                 "soft_root",
                 "in_navigation",
                 "page__site_id",
-                "page__languages",
                 "page__parent_id",
                 "page__is_home",
                 "page__login_required",
