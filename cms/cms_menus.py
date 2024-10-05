@@ -265,7 +265,7 @@ class CMSMenu(Menu):
             # Hacky, but faster than calling `admin_reverse` for each page content object
             url = re.sub("(/0/)", f"/{page_content.pk}/", preview_url)
         else:
-            url = page.get_absolute_url(language=page_content.language)
+            url = page.urls_cache[page_content.language].path
 
         return CMSNavigationNode(
             title=page_content.menu_title or page_content.title,
