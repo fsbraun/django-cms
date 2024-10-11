@@ -288,7 +288,7 @@ class DefaultLanguageChanger:
                         url = None
                 if url:
                     return url
-        elif view and view.url_name not in ('pages-details-by-slug', 'pages-root'):
+        if view and view.url_name not in ('pages-details-by-slug', 'pages-root'):
             view_name = view.url_name
             if view.namespace:
                 view_name = f"{view.namespace}:{view_name}"
