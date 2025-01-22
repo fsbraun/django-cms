@@ -1,3 +1,4 @@
+import re
 from collections import OrderedDict, namedtuple
 from copy import copy
 from datetime import datetime
@@ -20,8 +21,9 @@ from django.db.models import Model
 from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils.encoding import smart_str
-from django.utils.html import escape
+from django.utils.html import escape, json_script
 from django.utils.http import urlencode
+from django.utils.safestring import mark_safe
 from django.utils.translation import (
     get_language,
     gettext_lazy as _,
@@ -144,6 +146,15 @@ def _show_placeholder_by_id(context, placeholder_name, reverse_id,
 def _show_uncached_placeholder_by_id(context, *args, **kwargs):
     kwargs['use_cache'] = False
     return _show_placeholder_by_id(context, *args, **kwargs)
+
+
+_script_pattern = re.compile(r"(<script\b[^>]*)(>)")
+
+
+@register.filter
+def cms_script(obj, id=None, type="general"):
+    script = json_script(obj, id)
+    return mark_safe(_script_pattern.sub(f"\\1 data-cms-{type}\\2", script))
 
 
 @register.simple_tag(takes_context=True)
@@ -665,7 +676,7 @@ class CMSEditableObject(InclusionTag):
         """
         if not language:
             language = get_language_from_request(context['request'])
-        # This allow the requested item to be a method, a property or an
+        # This allows the requested item to be a method, a property or an
         # attribute
         if not instance and editmode:
             return context
