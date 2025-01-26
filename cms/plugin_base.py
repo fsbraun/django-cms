@@ -3,11 +3,8 @@ import re
 
 from django import forms
 from django.contrib import admin, messages
-from django.core.exceptions import (
-    ImproperlyConfigured,
-    ObjectDoesNotExist,
-    ValidationError,
-)
+from django.contrib.admin.utils import flatten_fieldsets
+from django.core.exceptions import ImproperlyConfigured, ObjectDoesNotExist, ValidationError
 from django.shortcuts import render
 from django.utils.encoding import force_str, smart_str
 from django.utils.html import escapejs
@@ -16,7 +13,8 @@ from django.utils.translation import gettext, gettext_lazy as _
 from cms import operations
 from cms.exceptions import SubClassNeededError
 from cms.models import CMSPlugin
-from cms.toolbar.utils import get_plugin_toolbar_info, get_plugin_tree, get_plugin_tree_as_json
+from cms.toolbar.utils import get_plugin_toolbar_info, get_plugin_tree
+from cms.utils.compat import DJANGO_5_1
 from cms.utils.conf import get_cms_setting
 
 
@@ -159,7 +157,7 @@ class CMSPluginBase(admin.ModelAdmin, metaclass=CMSPluginBaseMetaclass):
     See also: :meth:`icon_alt`, :meth:`icon_src`."""
 
     #: Set to ``True`` if this plugin should only be used in a placeholder that is attached to a django CMS page,
-    #: and not other models with ``PlaceholderFields``. See also: :attr:`child_classes`, :attr:`parent_classes`,
+    #: and not other models with ``PlaceholderRelationFields``. See also: :attr:`child_classes`, :attr:`parent_classes`,
     #: :attr:`require_parent`.
     page_only = False
 
@@ -199,6 +197,21 @@ class CMSPluginBase(admin.ModelAdmin, metaclass=CMSPluginBaseMetaclass):
 
     #: Disables *dragging* of child plugins in structure mode.
     disable_child_plugins = False
+
+    #: Disables *editing* of this plugin in structure mode. Useful for plugins which, for example, are managed by
+    #: their parent plugins.
+    #:
+    #: If editing is disabled, the plugin will be rendered in structure mode normally, but double-clicking on it will
+    #: not open the plugin edit dialog. The user will not have a direct way to change the plugin instance.
+    #:
+    #: Moving or adding child plugins are not affected.
+    disable_edit = False
+
+    #: Determines if the add plugin modal is shown for this plugin (default: yes). Useful for plugins which,have no
+    #: fields to fill, or which have valid default values for *all* fields.
+    #: If the plugin's form will not validate with the default values the add plugin modal is shown with the form
+    #: errors
+    show_plugin_add_form = True
 
     # Warning: setting these to False, may have a serious performance impact,
     # because their child-parent-relation must be recomputed each
@@ -256,6 +269,15 @@ class CMSPluginBase(admin.ModelAdmin, metaclass=CMSPluginBaseMetaclass):
         if not template:
             raise ValidationError("plugin has no render_template: %s" % self.__class__)
         return template
+
+    if DJANGO_5_1:
+        # Avoid a bug in Django's template engine that is incompatible with Python 3.9+
+        # type hinting. By default, the parent class has no __class_getitem__ method.
+        # There exist third-party packages, however, that inject type hinting into Django.
+        # This ensures, that any type hinting is ignore for CMSPlugin (below Django 5.2)
+        # See https://github.com/django-cms/django-cms/issues/7948
+        def __class_getitem__(cls, item):
+            raise TypeError
 
     @classmethod
     def get_render_queryset(cls):
@@ -509,15 +531,15 @@ class CMSPluginBase(admin.ModelAdmin, metaclass=CMSPluginBaseMetaclass):
         pass
 
     def icon_src(self, instance):
-        """By default, this returns an empty string, which, if left un-overridden would result in no icon
+        """Deprecated: Since djangocms-text-ckeditor introduced inline previews of plugins, the icon will not be
+        rendered in TextPlugins anymore.
+
+        By default, this returns an empty string, which, if left un-overridden would result in no icon
         rendered at all, which, in turn, would render the plugin un-editable by the operator inside a parent
         text plugin.
 
         Therefore, this should be overridden when the plugin has text_enabled set to True to return the path
         to an icon to display in the text of the text plugin.
-
-        Since djangocms-text-ckeditor introduced inline previews of plugins, the icon will not be
-        rendered in TextPlugins anymore.
 
         :param instance: The instance of the plugin model.
         :type instance: :class:`cms.models.pluginmodel.CMSPlugin` instance
@@ -525,7 +547,7 @@ class CMSPluginBase(admin.ModelAdmin, metaclass=CMSPluginBaseMetaclass):
         Example::
 
             def icon_src(self, instance):
-                return settings.STATIC_URL + "cms/img/icons/plugins/link.png"
+                return static("cms/img/icons/plugins/link.png")
 
         See also: :attr:`text_enabled`, :meth:`icon_alt`
         """
@@ -541,7 +563,7 @@ class CMSPluginBase(admin.ModelAdmin, metaclass=CMSPluginBaseMetaclass):
             for the 'alt' text.
         :type instance: :class:`cms.models.pluginmodel.CMSPlugin` instance
 
-        By default :meth:`icon_alt` will return a string of the form: "[plugin type] -
+        By default, :meth:`icon_alt` will return a string of the form: "[plugin type] -
         [instance]", but can be modified to return anything you like.
 
         This function accepts the ``instance`` as a parameter and returns a string to be

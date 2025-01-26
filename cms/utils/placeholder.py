@@ -21,7 +21,7 @@ from django.template.loader_tags import BlockNode, ExtendsNode, IncludeNode
 from sekizai.helpers import get_varname
 
 from cms.exceptions import DuplicatePlaceholderWarning
-from cms.models import Placeholder
+from cms.models import EmptyPageContent, Placeholder
 from cms.utils.conf import get_cms_setting
 
 RANGE_START = 128
@@ -122,6 +122,7 @@ def get_toolbar_plugin_struct(plugins, slot=None, page=None):
                 "value": plugin.value,
                 "name": names.get(plugin.value, plugin.name),
                 "module": modules.get(plugin.value, plugin.module),
+                "add_form": plugin.show_plugin_add_form and not plugin.disable_edit,
             }
         )
     return sorted(main_list, key=operator.itemgetter("module"))
@@ -407,7 +408,7 @@ def rescan_placeholders_for_obj(obj):
     return existing
 
 
-def get_declared_placeholders_for_obj(obj: Union[models.Model, None]) -> list[Placeholder]:
+def get_declared_placeholders_for_obj(obj: Union[models.Model, EmptyPageContent, None]) -> list[Placeholder]:
     """Returns declared placeholders for an object. The object is supposed to either have a method
     ``get_placeholder_slots`` which returns the list of placeholders or a method ``get_template``
     which returns the template path as a string that renders the object. ``get_declared_placeholders`` returns
