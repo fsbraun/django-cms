@@ -12,6 +12,8 @@ from django.utils.translation import (
     gettext,
     override as force_language,
 )
+from sekizai.context import SekizaiContext
+from sekizai.helpers import get_varname
 
 from cms.constants import PLACEHOLDER_TOOLBAR_JS, PLUGIN_TOOLBAR_JS
 from cms.utils.compat.warnings import RemovedInDjangoCMS43Warning
