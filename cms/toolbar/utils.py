@@ -12,8 +12,6 @@ from django.utils.translation import (
     gettext,
     override as force_language,
 )
-from sekizai.context import SekizaiContext
-from sekizai.helpers import get_varname
 
 from cms.constants import PLACEHOLDER_TOOLBAR_JS, PLUGIN_TOOLBAR_JS
 from cms.utils.compat.warnings import RemovedInDjangoCMS43Warning
@@ -69,15 +67,15 @@ def get_plugin_tree_as_json(request, plugins):
 
     warnings.warn("get_plugin_tree_as_json is deprecated. Use get_plugin_tree instead.",
                   RemovedInDjangoCMS43Warning, stacklevel=2)
-    return json.dumps(get_plugin_tree(request, plugins)[0])
+    return json.dumps(get_plugin_tree(request, plugins))
 
 
-def get_plugin_tree(request, plugins):
+def get_plugin_tree(request, plugins, restrictions: Optional[dict] = None):
     from cms.utils.plugins import downcast_plugins, get_plugin_restrictions
 
     tree_data = []
     tree_structure = []
-    restrictions = {}
+    restrictions = restrictions or {}
     root_plugins = deque()
     plugin_children = defaultdict(deque)
     toolbar = get_toolbar_from_request(request)
