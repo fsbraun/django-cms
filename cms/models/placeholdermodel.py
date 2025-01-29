@@ -48,6 +48,9 @@ class Placeholder(models.Model):
         permissions = (
             ("use_structure", "Can use Structure mode"),
         )
+        constraints = [
+            models.UniqueConstraint(fields=['object_id', 'content_type', 'slot'], name='cms_placeholder_unique_source_slot')
+        ]
 
     def __str__(self):
         return self.slot
