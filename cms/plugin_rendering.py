@@ -112,7 +112,7 @@ class BaseRenderer:
         return Site.objects.get_current(self.request)
 
     @cached_property
-    def toolbar(self):
+    def toolbar(self):  # Type hinting disrupts import order
         return get_toolbar_from_request(self.request)
 
     @cached_property

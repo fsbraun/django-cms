@@ -944,29 +944,32 @@ class StructureBoard {
     // eslint-disable-next-line complexity
     invalidateState(action, data, { propagate = true } = {}) {
         // eslint-disable-next-line default-case
+        let updateNeeded = true;
+
         switch (action) {
             case 'COPY': {
                 this.handleCopyPlugin(data);
+                updateNeeded = false;
                 break;
             }
 
             case 'ADD': {
-                this.handleAddPlugin(data);
+                updateNeeded = this.handleAddPlugin(data);
                 break;
             }
 
             case 'EDIT': {
-                this.handleEditPlugin(data);
+                updateNeeded = this.handleEditPlugin(data);
                 break;
             }
 
             case 'DELETE': {
-                this.handleDeletePlugin(data);
+                updateNeeded = this.handleDeletePlugin(data);
                 break;
             }
 
             case 'CLEAR_PLACEHOLDER': {
-                this.handleClearPlaceholder(data);
+                updateNeeded = this.handleClearPlaceholder(data);
                 break;
             }
 
@@ -980,14 +983,13 @@ class StructureBoard {
                 this.handleCutPlugin(data);
                 break;
             }
+
+            default:
+                CMS.API.Helpers.reloadBrowser();
+                return;
         }
 
         Plugin._recalculatePluginPositions(action, data);
-
-        if (!action) {
-            CMS.API.Helpers.reloadBrowser();
-            return;
-        }
 
         if (propagate) {
             this._propagateInvalidatedState(action, data);
@@ -1000,15 +1002,14 @@ class StructureBoard {
         if (currentMode === 'structure') {
             this._requestcontent = null;
 
-            if (this._loadedContent && action !== 'COPY') {
+            if (this._loadedContent && updateNeeded) {
                 this.updateContent();
                 return;  // Toolbar loaded
             }
-        } else if (action !== 'COPY') {
+        } else if (updateNeeded === true) {
             this._requestcontent = null;
             this.updateContent();
             return;  // Toolbar loaded
-
         }
         this._loadToolbar()
             .done(newToolbar => {
@@ -1076,6 +1077,86 @@ class StructureBoard {
                     `obj_type=${encodeURIComponent(CMS.config.request.model)}`
             )
         });
+    }
+
+    /**
+     * Updates the content of the plugin list.
+     *
+     * @method _updatePluginList
+     * @private
+     * @param {Object} data - The data containing the new plugin information, both markup and list.
+     * @param {jQuery} el - The element to update - otherwise first in the plugin list.
+     * @returns {Boolean} - Returns true if after calling the method an update is still needed.
+     */
+    _updatePluginList(data, el = null) {
+        let position = el;
+
+        if (!data || !data.content || !data.content.pluginIds || !data.content.html) {
+            return true;  // Update needed
+        }
+        if (el === null) {
+            // Get the position for replacing the plugin with id plugin_id
+            position = $(`:not(template).cms-plugin.cms-plugin-${data.content.pluginIds[0]}`).last();
+        }
+        if (position.length !== 1) {
+            return true; // Update needed
+        }
+        position.after(data.content.html);  // insert HTML
+        if (el === null) {
+            // No element given, i.e. remove the old plugin
+            // Go through all plugins and child plugins (they might not be nested)
+            data.content.pluginIds.forEach(id => {
+                $(`:not(template).cms-plugin.cms-plugin-${id}`).remove();
+            });
+        }
+
+        if (data.content.css.length) {
+            const css = $(data.content.css);
+
+            $('head').append(css);
+        }
+        if (data.content.js.length) {
+            const js = $(data.content.js);
+
+            js.find('[data-cms], [data-cms-plugin]').remove();
+            $('body').append(js);
+        }
+        this._contentChanged(data.messages);
+        return false;
+    }
+
+    _updateCMSScripts(data, add) {
+        if (data && data.content && data.content.js) {
+            const js = $(data.content.js);
+
+            js.find('[data-cms], [data-cms-plugin], [data-cms-placeholder], [data-cms-general]').each(el => {
+                if (add || !el.hasAttribute('data-cms')) {
+                    const existing = $(`#${el.id}`);
+
+                    if (existing.length) {
+                        existing.replaceWith(el);
+                    } else {
+                        $('script[data-cms-config]').append(el);
+                    }
+                }
+            });
+        }
+    }
+
+    _contentChanged(messages) {
+        Plugin._refreshPlugins();
+
+        Helpers._getWindow().dispatchEvent(new Event('load'));
+        $(Helpers._getWindow()).trigger('cms-content-refresh');
+        if (messages) {
+            CMS.API.Messages.close();
+            if (messages.length) {
+                CMS.API.Messages.open({
+                    message: messages.map(message => `<p>${message.message}</p>`).join(''),
+                    error: messages.some(message => message.level === 'error')
+                });
+            }
+        }
     }
 
     // i think this should probably be a separate class at this point that handles all the reloading
@@ -1241,13 +1322,11 @@ class StructureBoard {
         if (!this._loadedStructure) {
             this._requeststructure = null;
         }
-        var fixedContentMarkup = contentMarkup;
-        var newDoc = new DOMParser().parseFromString(fixedContentMarkup, 'text/html');
-
+        const newDoc = new DOMParser().parseFromString(contentMarkup, 'text/html');
         const structureScrollTop = $('.cms-structure-content').scrollTop();
 
-        var toolbar = $('#cms-top, [data-cms]').detach();
-        var newToolbar = $(newDoc).find('.cms-toolbar').clone();
+        const toolbar = $('#cms-top, [data-cms]').detach();
+        const newToolbar = $(newDoc).find('.cms-toolbar').clone();
 
         $(newDoc).find('#cms-top, [data-cms]').remove();
 
@@ -1263,19 +1342,15 @@ class StructureBoard {
 
         var headDiff = dd.diff(document.head, newDoc.head);
 
-        StructureBoard._replaceBodyWithHTML(newDoc.body.innerHTML);
+        StructureBoard._replaceBodyWithHTML(newDoc.body);
         dd.apply(document.head, headDiff);
         toolbar.prependTo(document.body);
         CMS.API.Toolbar._refreshMarkup(newToolbar);
+        this._loadedContent = true;
 
         $('.cms-structure-content').scrollTop(structureScrollTop);
 
-        Plugin._refreshPlugins();
-
-        Helpers._getWindow().dispatchEvent(new Event('load'));
-        $(Helpers._getWindow()).trigger('cms-content-refresh');
-
-        this._loadedContent = true;
+        this._contentChanged();
     }
 
     handleAddPlugin(data) {
@@ -1294,6 +1369,8 @@ class StructureBoard {
 
         this.ui.sortables = $('.cms-draggables');
         this._dragRefresh();
+        this._updateCMSScripts(data, true);
+        return this._updatePluginList(data);
     }
 
     handleEditPlugin(data) {
@@ -1311,6 +1388,7 @@ class StructureBoard {
 
         this.ui.sortables = $('.cms-draggables');
         this._dragRefresh();
+        return this._updatePluginList(data);
     }
 
     handleDeletePlugin(data) {
@@ -1338,6 +1416,7 @@ class StructureBoard {
                 instance => instance.options.plugin_id && Number(instance.options.plugin_id) === Number(pluginId)
             );
         });
+        return true;
     }
 
     handleClearPlaceholder(data) {
@@ -1363,6 +1442,7 @@ class StructureBoard {
         });
 
         StructureBoard.actualizePlaceholders();
+        return true;
     }
 
     /**
@@ -1449,8 +1529,10 @@ class StructureBoard {
         });
     }
 
-    static _replaceBodyWithHTML(html) {
-        document.body.innerHTML = html;
+    static _replaceBodyWithHTML(newBody) {
+        const diff = dd.diff(document.body, newBody);
+
+        dd.apply(document.body, diff);
     }
 
     highlightPluginFromUrl() {

@@ -42,16 +42,16 @@ Empty sections are to be removed before release.
 Security: Improved content security policy support
 ==================================================
 
-Earlier versions of django CMS added inline JavaScript to the page in edit mode to 
+Earlier versions of django CMS added inline JavaScript to the page in edit mode to
 communicate with the frontend editor. This effectively barred projects from enforcing
-meaningful content security policies. In django CMS 4.2.0, we have removed all inline 
-JavaScript from the edit mode (or other places in django CMS), replacing it with 
-text/json objects to communicate with the frontend editor. This allows projects to 
-enforce strict Content Security Policies (CSP) without any issues. 
+meaningful content security policies. In django CMS 4.2.0, we have removed all inline
+JavaScript from the edit mode (or other places in django CMS), replacing it with
+text/json objects to communicate with the frontend editor. This allows projects to
+enforce strict Content Security Policies (CSP) without any issues.
 
-For a fully working project, it is also important that other packages used, especially 
-plugins, do not rely on inline JavaScript. This change enhances the security 
-posture of your django CMS projects by enabling the use of CSP headers to mitigate 
+For a fully working project, it is also important that other packages used, especially
+plugins, do not rely on inline JavaScript. This change enhances the security
+posture of your django CMS projects by enabling the use of CSP headers to mitigate
 cross-site scripting (XSS) and other code injection attacks.
 
 Development: Exception handling
@@ -85,6 +85,11 @@ Minor features
   how many pages, translations (counted by ``PageUrl`` objects) and plugins
   are about to be deleted.
 
+* ``CMS_PLACEHOLDER_CONF`` now allows to add configuration by template name for
+  placeholders that not necessarily are part of a page, but could be part of
+  any model (e.g., an alias). Instead for looking at pages, the placeholder tries
+  to access a ``get_template()`` method on its source model instance to identify
+  the template name its rendered on.
 * ``CMS_PLACEHOLDER_CONF`` now allows to add configuration by template name for
   placeholders that not necessarily are part of a page, but could be part of
   any model (e.g., an alias). Instead for looking at pages, the placeholder tries

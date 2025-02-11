@@ -12,6 +12,8 @@ from django.utils.translation import (
     gettext,
     override as force_language,
 )
+from sekizai.context import SekizaiContext
+from sekizai.helpers import get_varname
 
 from cms.constants import PLACEHOLDER_TOOLBAR_JS, PLUGIN_TOOLBAR_JS
 from cms.models import PageContent
@@ -122,7 +124,30 @@ def get_plugin_tree(request, plugins, restrictions: Optional[dict] = None):
             }
             tree_structure.append(template.render(context))
     tree_data.reverse()
-    return {'html': '\n'.join(tree_structure), 'plugins': tree_data}
+    return {'html': '\n'.join(tree_structure), 'plugins': tree_data}, plugins
+
+
+def get_plugin_content(request, plugin, context={}):
+    toolbar = get_toolbar_from_request(request)
+    renderer = toolbar.content_renderer
+    # Switch to edit mode despite the request originally coming from the admin
+    toolbar.edit_mode_active = True
+    renderer._placeholders_are_editable = True
+    context = SekizaiContext({'request': request, **context})
+    content = renderer.render_plugin(plugin, context, placeholder=plugin.placeholder, editable=True)
+    return {
+        "html": content,
+        "js": '\n'.join(context[get_varname()].get("js", [])),
+        "css": '\n'.join(context[get_varname()].get("css", [])),
+        "pluginIds": get_plugin_tree_ids(plugin) ,
+    }
+
+
+def get_plugin_tree_ids(plugin):
+    plugin_ids = [plugin.pk]
+    for child in plugin.child_plugin_instances:
+        plugin_ids += get_plugin_tree_ids(child)
+    return plugin_ids
 
 
 def get_toolbar_from_request(request):
