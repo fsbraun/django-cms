@@ -207,6 +207,7 @@ class Sideframe {
             }
 
             contents = iframe.contents();
+            iframe.attr('title', contents.find('title').text());
             body = contents.find('body');
 
             // inject css class
@@ -434,15 +435,15 @@ class Sideframe {
      */
     _updateHistoryButtons() {
         if (this.history.back.length > 1) {
-            this.ui.historyBack.removeClass('cms-icon-disabled');
+            this.ui.historyBack.removeClass('cms-icon-disabled').prop('disabled', false);
         } else {
-            this.ui.historyBack.addClass('cms-icon-disabled');
+            this.ui.historyBack.addClass('cms-icon-disabled').prop('disabled', true);
         }
 
         if (this.history.forward.length >= 1) {
-            this.ui.historyForward.removeClass('cms-icon-disabled');
+            this.ui.historyForward.removeClass('cms-icon-disabled').prop('disabled', false);
         } else {
-            this.ui.historyForward.addClass('cms-icon-disabled');
+            this.ui.historyForward.addClass('cms-icon-disabled').prop('disabled', true);
         }
     }
 }

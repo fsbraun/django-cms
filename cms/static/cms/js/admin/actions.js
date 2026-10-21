@@ -1,3 +1,4 @@
+/* global django, gettext */
 (function($) {
     $(function() {
         // INFO: it is not possible to put a form inside a form, so
@@ -7,14 +8,20 @@
         function closeSideFrame() {
             try {
                 window.top.CMS.API.Sideframe.close();
-            } catch (err) {}
+            } catch {}
         }
         $(`.js-action,
            .cms-js-edit-btn,
            .cms-actions-dropdown-menu-item-anchor`)
             .on('click', function(e) {
                 let action = $(e.currentTarget);
-                let formMethod = action.attr('class').indexOf('cms-form-post-method') !== -1 ? 'POST' : 'GET';
+
+                if (action.is('.inactive, [aria-disabled="true"]') || !action.attr('href')) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    return;
+                }
+                let formMethod = action.hasClass('cms-form-post-method') ? 'POST' : 'GET';
                 let keepSideFrame = action.attr('class').indexOf('js-keep-sideframe') !== -1;
 
                 if (formMethod === 'GET') {
@@ -55,16 +62,30 @@
                 }
             });
 
+        // Links handle Enter natively. POST actions also expose button semantics
+        // and need Space activation, including after being moved into a menu.
+        $('.js-action, .cms-js-edit-btn, .cms-actions-dropdown-menu-item-anchor').on('keydown', function(e) {
+            if (e.key === ' ' && this.matches('[role="button"], [role="menuitem"]')) {
+                e.preventDefault();
+                this.click();
+            }
+        });
+
         $('.js-close-sideframe').on('click', function () {
+            if ($(this).is('.inactive, [aria-disabled="true"]')) {
+                return;
+            }
             try {
                 window.top.CMS.API.Sideframe.close();
-            } catch (e) {}
+            } catch {}
         });
     });
 
     // Hide django messages after timeout occurs to prevent content overlap
     $('document').ready(function() {
         // Targeting first item returned (there's only ever one messagelist per template):
+        const fadeInterval = 20;
+        const messageDelay = 5000;
         let messageList = document.getElementsByClassName('messagelist')[0];
 
         if (messageList !== undefined) {
@@ -77,125 +98,147 @@
                             item.style.display = 'none';
                             clearInterval(fader);
                         }
-                    }, 20);
-                }, 5000);
+                    }, fadeInterval);
+                }, messageDelay);
             }
         }
     });
 
-    // Create burger menu:
+    // Create a keyboard-accessible menu while preserving the original actions
+    // and their event handlers, HTTP methods, disabled state and sideframe flags.
     $(function() {
-        let createBurgerMenu = function createBurgerMenu(row) {
+        const menus = [];
+        const actionsLabel = typeof gettext === 'function' ? gettext('Actions') : 'Actions';
+        const closeBurgerMenu = function() {
+            menus.forEach(({ anchor, optionsContainer }) => {
+                anchor.classList.remove('open');
+                anchor.classList.add('closed');
+                anchor.setAttribute('aria-expanded', 'false');
+                optionsContainer.classList.remove('open');
+                optionsContainer.classList.add('closed');
+            });
+        };
 
-            let actions = $(row).children('.field-list_actions');
+        $('#result_list').find('tr').each(function(index, row) {
+            const actions = $(row).children('.field-list_actions')[0];
 
-            if (!actions.length) {
-                /* skip any rows without actions to avoid errors */
+            if (!actions || !actions.querySelector('.cms-burger-action-btn')) {
                 return;
             }
+            const anchor = document.createElement('button');
+            const icon = document.createElement('span');
+            const optionsContainer = document.createElement('div');
+            const ul = document.createElement('ul');
+            const menuId = 'cms-actions-menu-' + index;
 
-            /* create burger menu anchor icon */
-            let anchor = document.createElement('a');
-            let icon = document.createElement('span');
-
-            icon.setAttribute('class', 'cms-icon cms-icon-menu');
-            anchor.setAttribute('class', 'btn cms-action-btn cms-burger-menu closed');
-            anchor.setAttribute('title', 'Actions');
+            anchor.type = 'button';
+            anchor.id = menuId + '-toggle';
+            anchor.className = 'btn cms-action-btn cms-burger-menu closed';
+            anchor.title = actionsLabel;
+            anchor.setAttribute('aria-label', actionsLabel);
+            anchor.setAttribute('aria-expanded', 'false');
+            anchor.setAttribute('aria-haspopup', 'menu');
+            anchor.setAttribute('aria-controls', menuId);
+            icon.className = 'cms-icon cms-icon-menu';
+            icon.setAttribute('aria-hidden', 'true');
             anchor.appendChild(icon);
 
-            /* create options container */
-            let optionsContainer = document.createElement('div');
-            let ul = document.createElement('ul');
+            optionsContainer.id = menuId;
+            optionsContainer.className =
+                'cms-actions-dropdown-menu cms-actions-dropdown-menu-arrow-right-top closed';
+            optionsContainer.setAttribute('role', 'menu');
+            optionsContainer.setAttribute('aria-labelledby', anchor.id);
+            optionsContainer.tabIndex = -1;
+            ul.className = 'cms-actions-dropdown-menu-inner';
+            ul.setAttribute('role', 'presentation');
 
-            /* 'cms-actions-dropdown-menu' class is the main selector for the menu,
-            'cms-actions-dropdown-menu-arrow-right-top' keeps the menu arrow in position. */
-            optionsContainer.setAttribute(
-                'class',
-                'cms-actions-dropdown-menu cms-actions-dropdown-menu-arrow-right-top');
-            ul.setAttribute('class', 'cms-actions-dropdown-menu-inner');
+            $(actions).children('.cms-burger-action-btn').each(function(itemIndex, item) {
+                const li = document.createElement('li');
+                const label = document.createElement('span');
 
-            /* get the existing actions and move them into the options container */
-            $(actions[0]).children('.cms-burger-action-btn').each(function (index, item) {
-                let li = document.createElement('li');
-                /* create an anchor from the item */
-                let li_anchor = document.createElement('a');
-
-                li_anchor.setAttribute('class', 'cms-actions-dropdown-menu-item-anchor');
-                li_anchor.setAttribute('href', $(item).attr('href'));
-
-                if ($(item).hasClass('cms-form-get-method')) {
-                    li_anchor.classList.add('cms-form-get-method'); // Ensure the fake-form selector is propagated to the new anchor
-                }
-                /* move the icon */
-                li_anchor.appendChild($(item).children()[0]);
-
-                /* create the button text and construct the button */
-                let span = document.createElement('span');
-
-                span.setAttribute('class', 'label');
-                span.appendChild(
-                    document.createTextNode(item.title)
-                );
-
-                li_anchor.appendChild(span);
-                li.appendChild(li_anchor);
+                li.setAttribute('role', 'presentation');
+                item.classList.remove('btn', 'cms-action-btn', 'cms-burger-action-btn');
+                item.classList.add('cms-actions-dropdown-menu-item-anchor');
+                item.setAttribute('role', 'menuitem');
+                item.tabIndex = -1;
+                label.className = 'label';
+                label.textContent = item.title;
+                item.appendChild(label);
+                li.appendChild(item);
                 ul.appendChild(li);
-
-                /* destroy original replaced buttons */
-                actions[0].removeChild(item);
             });
+            optionsContainer.appendChild(ul);
+            actions.appendChild(anchor);
+            document.body.appendChild(optionsContainer);
+            menus.push({ anchor, optionsContainer });
 
-            if ($(ul).children().length > 0) {
-                /* add the options to the drop-down */
-                optionsContainer.appendChild(ul);
-                actions[0].appendChild(anchor);
-                document.body.appendChild(optionsContainer);
+            const enabledItems = () => Array.from(optionsContainer.querySelectorAll('[role="menuitem"]'))
+                .filter(item => !item.matches('.inactive, [aria-disabled="true"]'));
+            const openMenu = function(last = false) {
+                closeBurgerMenu();
+                anchor.classList.replace('closed', 'open');
+                anchor.setAttribute('aria-expanded', 'true');
+                optionsContainer.classList.replace('closed', 'open');
+                const menuOffset = 5;
+                const pos = $(anchor).offset();
+                const items = enabledItems();
+                const item = last ? items[items.length - 1] : items[0];
 
-                /* listen for burger menu clicks */
-                anchor.addEventListener('click', function (ev) {
-                    ev.stopPropagation();
-                    toggleBurgerMenu(anchor, optionsContainer);
+                $(optionsContainer).css({
+                    left: pos.left - $(optionsContainer).width() - menuOffset,
+                    top: pos.top - 2
                 });
+                (item || optionsContainer).focus();
+            };
 
-                /* close burger menu if clicking outside */
-                $(window).click(function () {
+            anchor.addEventListener('click', function(event) {
+                event.stopPropagation();
+                if (anchor.getAttribute('aria-expanded') === 'true') {
                     closeBurgerMenu();
-                });
-            }
-        };
+                } else {
+                    openMenu();
+                }
+            });
+            anchor.addEventListener('keydown', function(event) {
+                if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                    event.preventDefault();
+                    openMenu(event.key === 'ArrowUp');
+                } else if (event.key === 'Escape') {
+                    event.preventDefault();
+                    closeBurgerMenu();
+                }
+            });
+            optionsContainer.addEventListener('keydown', function(event) {
+                if (event.key === 'Escape' || event.key === 'Tab') {
+                    if (event.key === 'Escape') {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+                    closeBurgerMenu();
+                    // Let Tab continue from the trigger's position in the table.
+                    anchor.focus();
+                } else if (['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
+                    event.preventDefault();
+                    const items = enabledItems();
+                    const current = items.indexOf(document.activeElement);
+                    let next = 0;
 
-        let toggleBurgerMenu = function toggleBurgerMenu(burgerMenuAnchor, optionsContainer) {
-            let bm = $(burgerMenuAnchor);
-            let op = $(optionsContainer);
-            let closed = bm.hasClass('closed');
-
-            closeBurgerMenu();
-
-            if (closed) {
-                bm.removeClass('closed').addClass('open');
-                op.removeClass('closed').addClass('open');
-            } else {
-                bm.addClass('closed').removeClass('open');
-                op.addClass('closed').removeClass('open');
-            }
-
-            let pos = bm.offset();
-
-            op.css('left', pos.left - op.width() - 5);
-            op.css('top', pos.top - 2);
-        };
-
-        let closeBurgerMenu = function closeBurgerMenu() {
-            $('.cms-actions-dropdown-menu').removeClass('open');
-            $('.cms-actions-dropdown-menu').addClass('closed');
-            $('.cms-action-btn').removeClass('open');
-            $('.cms-action-btn').addClass('closed');
-        };
-
-        $('#result_list').find('tr').each(function (index, item) {
-            createBurgerMenu(item);
+                    if (event.key === 'End') {
+                        next = items.length - 1;
+                    } else if (event.key !== 'Home') {
+                        next = (current + (event.key === 'ArrowUp' ? -1 : 1) + items.length) % items.length;
+                    }
+                    items[next]?.focus();
+                }
+            });
+            optionsContainer.addEventListener('focusout', function(event) {
+                if (!optionsContainer.contains(event.relatedTarget) && event.relatedTarget !== anchor) {
+                    closeBurgerMenu();
+                }
+            });
         });
 
+        $(window).on('click', closeBurgerMenu);
     });
 
 })((typeof django !== 'undefined' && django.jQuery) || (typeof CMS !== 'undefined' && CMS.$) || false);

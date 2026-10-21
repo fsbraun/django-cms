@@ -74,19 +74,19 @@
                                 <div class="cms-pagetree-header-filter">
                                     <input type="text" size="40" name="q" id="field-searchbar" value="{{ tree.query }}" placeholder="{% trans "Search" %}">
                                     <div class="cms-pagetree-header-filter-trigger js-cms-pagetree-header-filter-trigger">
-                                        <a href="#"><span class="cms-icon cms-icon-arrow"></span></a>
+                                        <a href="#" aria-label="{% trans 'Filter pages' %}"><span class="cms-icon cms-icon-arrow" aria-hidden="true"></span></a>
                                     </div>
                                     <div class="cms-pagetree-header-filter-container js-cms-pagetree-header-filter-container">
                                         {% for field in changelist_form.visible_fields %}
                                             {% render_filter_field request field %}
                                         {% endfor %}
-                                        <a href="#" class="cms-pagetree-header-search-close js-cms-pagetree-header-search-close">
-                                            <span class="cms-icon cms-icon-close"></span>
+                                        <a href="#" class="cms-pagetree-header-search-close js-cms-pagetree-header-search-close" aria-label="{% trans 'Close filters' %}">
+                                            <span class="cms-icon cms-icon-close" aria-hidden="true"></span>
                                         </a>
                                     </div>
                                 </div>
-                                <button type="submit" class="cms-pagetree-header-search-btn">
-                                    <span class="cms-icon cms-icon-search"></span>
+                                <button type="submit" class="cms-pagetree-header-search-btn" aria-label="{% trans 'Search' %}">
+                                    <span class="cms-icon cms-icon-search" aria-hidden="true"></span>
                                 </button>
                             </form>
                         </div>
@@ -113,8 +113,8 @@
 
                     {# INFO: dropdown for changing sites and recover deleted pages #}
                     <div class="cms-pagetree-sites-list cms-pagetree-dropdown js-cms-pagetree-dropdown">
-                        <a href="#" class="cms-pagetree-dropdown-trigger js-cms-pagetree-dropdown-trigger">
-                            <span class="cms-icon cms-icon-squares"></span>
+                        <a href="#" class="cms-pagetree-dropdown-trigger js-cms-pagetree-dropdown-trigger" aria-label="{% trans 'Sites' %}">
+                            <span class="cms-icon cms-icon-squares" aria-hidden="true"></span>
                         </a>
                         <div class="cms-pagetree-dropdown-menu cms-pagetree-dropdown-menu-condensed cms-pagetree-dropdown-menu-arrow-block-start-inline-end js-cms-pagetree-dropdown-menu">
                             <ul class="cms-pagetree-dropdown-menu-inner">
@@ -154,7 +154,7 @@
                 <div class="cms-pagetree cms-pagetree-section cms-pagetree-section-header">
                     <h2>{% trans "Main Navigation" %}</h2>
                     {% if site_languages|length > 1 %}
-                        <select class="js-cms-pagetree-languages">
+                        <select class="js-cms-pagetree-languages" aria-label="{% trans 'Language' %}">
                             {% for language_code, name in site_languages %}
                                 <option value="{{ language_code }}" {% if preview_language == language_code %} selected{% endif %}>{{ name }}</option>
                             {% endfor %}

@@ -7,11 +7,12 @@ from django.contrib.auth import get_permission_codename
 from django.contrib.sites.models import Site
 from django.db import connection
 from django.templatetags.static import static
+from django.test import SimpleTestCase
 from django.test.utils import CaptureQueriesContext
 from django.utils.crypto import get_random_string
 from django.utils.translation import get_language, override as force_language
 
-from cms.admin.utils import CONTENT_PREFIX, GrouperModelAdmin
+from cms.admin.utils import CONTENT_PREFIX, ChangeListActionsMixin, GrouperModelAdmin
 from cms.test_utils.project.sampleapp.models import (
     GrouperModel,
     GrouperModelContent,
@@ -22,6 +23,45 @@ from cms.test_utils.testcases import CMSTestCase
 from cms.test_utils.util.grouper import wo_content_permission
 from cms.utils.i18n import get_language_list
 from cms.utils.urlutils import admin_reverse, static_with_version
+
+
+class ActionButtonAccessibilityTests(SimpleTestCase):
+    def test_action_name_and_decorative_icon(self):
+        markup = ChangeListActionsMixin.admin_action_button(
+            "/edit/",
+            "edit",
+            'Edit "article" <draft>',
+        )
+        self.assertIn('aria-label="Edit &quot;article&quot; &lt;draft&gt;"', markup)
+        self.assertIn('aria-hidden="true"', markup)
+        self.assertIn('href="/edit/"', markup)
+        self.assertNotIn('role="button"', markup)
+
+    def test_post_action_has_button_semantics(self):
+        markup = ChangeListActionsMixin.admin_action_button(
+            "/delete/",
+            "bin",
+            "Delete",
+            action="post",
+        )
+        self.assertIn('role="button"', markup)
+        self.assertIn('aria-label="Delete"', markup)
+        self.assertIn("cms-form-post-method", markup)
+
+    def test_disabled_action_exposes_state_and_has_no_destination(self):
+        for method in ("get", "post"):
+            with self.subTest(method=method):
+                markup = ChangeListActionsMixin.admin_action_button(
+                    "/unavailable/",
+                    "bin",
+                    "Unavailable",
+                    action=method,
+                    disabled=True,
+                )
+                self.assertIn('aria-disabled="true"', markup)
+                self.assertIn('tabindex="-1"', markup)
+                self.assertNotIn("href=", markup)
+                self.assertIn('role="button"' if method == "post" else 'role="link"', markup)
 
 
 class SetupMixin:

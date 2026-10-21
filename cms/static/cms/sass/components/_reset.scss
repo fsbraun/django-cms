@@ -2,6 +2,10 @@
 // RESET
 
 .cms-reset {
+    button.cms-icon {
+        @extend %icon;
+    }
+
     div,
     p,
     a,
@@ -14,6 +18,7 @@
     fieldset,
     label,
     input,
+    button,
     textarea,
     kbd,
     h1,

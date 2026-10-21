@@ -14,6 +14,7 @@ import { showLoader, hideLoader } from './loader';
 
 var previousKeyboardContext;
 var previouslyFocusedElement;
+let inertElements = [];
 
 /**
  * The modal is triggered via API calls from the backend either
@@ -88,7 +89,7 @@ class Modal {
         this.ui.minimizeButton
             .off(this.click + ' ' + this.touchEnd + ' ' + this.keyUp)
             .on(this.click + ' ' + this.touchEnd + ' ' + this.keyUp, function(e) {
-                if (e.type !== 'keyup' || (e.type === 'keyup' && e.keyCode === KEYS.ENTER)) {
+                if (e.type !== 'keyup' || (e.keyCode === KEYS.ENTER && this.tagName !== 'BUTTON')) {
                     e.preventDefault();
                     that.minimize();
                 }
@@ -96,7 +97,7 @@ class Modal {
         this.ui.maximizeButton
             .off(this.click + ' ' + this.touchEnd + ' ' + this.keyUp)
             .on(this.click + ' ' + this.touchEnd + ' ' + this.keyUp, function(e) {
-                if (e.type !== 'keyup' || (e.type === 'keyup' && e.keyCode === KEYS.ENTER)) {
+                if (e.type !== 'keyup' || (e.keyCode === KEYS.ENTER && this.tagName !== 'BUTTON')) {
                     e.preventDefault();
                     that.maximize();
                 }
@@ -118,7 +119,7 @@ class Modal {
         this.ui.closeAndCancel
             .off(this.click + ' ' + this.touchEnd + ' ' + this.keyUp)
             .on(this.click + ' ' + this.touchEnd + ' ' + this.keyUp, function(e) {
-                if (e.type !== 'keyup' || (e.type === 'keyup' && e.keyCode === KEYS.ENTER)) {
+                if (e.type !== 'keyup' || (e.keyCode === KEYS.ENTER && this.tagName !== 'BUTTON')) {
                     e.preventDefault();
                     that._cancelHandler();
                 }
@@ -363,8 +364,41 @@ class Modal {
             }
         });
 
+        this._setModalState(true);
+
         // set focus to modal
         this.ui.modal.focus();
+    }
+
+    /**
+     * Keep the entire dialog in the tab sequence and hide its background from
+     * interaction. Preserve any inert state supplied by the host page.
+     *
+     * @param {Boolean} active whether the dialog is modal
+     * @private
+     */
+    _setModalState(active) {
+        inertElements.forEach(element => {
+            element.inert = false;
+        });
+        inertElements = [];
+        this.ui.modal.attr('aria-modal', active ? 'true' : 'false');
+        if (!active) {
+            untrap(this.ui.modal[0]);
+            return;
+        }
+        trap(this.ui.modal[0]);
+        let element = this.ui.modal[0];
+
+        while (element?.parentElement && element !== document.body) {
+            for (const sibling of element.parentElement.children) {
+                if (sibling !== element && !sibling.inert && !/^(SCRIPT|STYLE|LINK)$/.test(sibling.tagName)) {
+                    sibling.inert = true;
+                    inertElements.push(sibling);
+                }
+            }
+            element = element.parentElement;
+        }
     }
 
     /**
@@ -386,7 +420,7 @@ class Modal {
         if (this.options.onClose) {
             Helpers.reloadBrowser(this.options.onClose, false);
         }
-        untrap(this.ui.body[0]);
+        this._setModalState(false);
         keyboard.setContext(previousKeyboardContext);
         try {
             previouslyFocusedElement.focus();
@@ -413,6 +447,7 @@ class Modal {
             duration = opts.duration;
         }
 
+        this._setModalState(false);
         this.ui.frame.empty();
         this.ui.modalBody.removeClass('cms-loader');
         this.ui.modal.removeClass('cms-modal-open');
@@ -462,12 +497,16 @@ class Modal {
             });
 
             this.minimized = true;
+            this._setModalState(false);
         } else {
             // maximize
             this.ui.body.removeClass('cms-modal-minimized');
             this.ui.modal.css(this.ui.modal.data('css'));
 
             this.minimized = false;
+            if (this.ui.modal.hasClass('cms-modal-open')) {
+                this._setModalState(true);
+            }
         }
     }
 
@@ -872,6 +911,7 @@ class Modal {
         var titlePrefix = this.ui.titlePrefix;
         var titleSuffix = this.ui.titleSuffix;
 
+        iframe.attr('title', opts.title || CMS.config.lang.loading);
         iframe.css('visibility', 'hidden');
         titlePrefix.text(opts.title || '');
         titleSuffix.text('');
@@ -906,7 +946,7 @@ class Modal {
             }
 
             // trap focus within modal
-            trap(body[0]);
+            trap(body[0], that.ui.modal[0]);
 
             // check if we are redirected - should only happen after successful form submission
             const redirect = body.find('a.cms-view-new-object').attr('href');
@@ -1061,6 +1101,12 @@ class Modal {
                     titleSuffix.text(innerTitle.text());
                 }
                 innerTitle.remove();
+                const title = that.ui.title.text().trim() || contents.find('title').text().trim();
+
+                iframe.attr('title', title);
+                if (!that.ui.title.text().trim()) {
+                    titlePrefix.text(title);
+                }
 
                 // than show
                 iframe.css('visibility', 'visible');
@@ -1188,7 +1234,6 @@ class Modal {
         this.ui.frame.empty().append(opts.html);
         this.ui.titlePrefix.text(opts.title || '');
         this.ui.titleSuffix.text(opts.subtitle || '');
-        trap(this.ui.frame[0]);
     }
 
     /**

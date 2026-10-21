@@ -4,6 +4,7 @@
 // Copyright (c) 2011, 2012 Julien Wajsberg, 2025 Fabian Braun
 
 const DATA_ISTRAPPING_KEY = '__trap_isTrapping';
+const boundaries = new WeakMap();
 
 /**
  * Returns all visible, focusable elements inside a container.
@@ -17,7 +18,7 @@ const DATA_ISTRAPPING_KEY = '__trap_isTrapping';
 function getFocusableElementsInContainer(container) {
     const elements = Array.from(container.querySelectorAll(
         'a[href], link[href], [draggable="true"], [contenteditable="true"], input:not([disabled]), ' +
-        'button:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex], summary'
+        'button:not([disabled]), textarea:not([disabled]), select:not([disabled]), iframe, [tabindex], summary'
     )).filter(el => el.offsetParent !== null);
 
     // Sort by tabIndex: positive first, then normal
@@ -66,9 +67,14 @@ function processTab(container, elt, goReverse) {
  */
 function onKeyPress(e) {
     if (e.key === 'Tab') {
-        const container = e.currentTarget;
+        const container = boundaries.get(e.currentTarget);
         const goReverse = !!e.shiftKey;
 
+        // An iframe can forward its key events to an enclosing dialog. The
+        // dialog owns the trap's lifetime (including minimizing and closing).
+        if (!container?.[DATA_ISTRAPPING_KEY]) {
+            return;
+        }
         processTab(container, container.ownerDocument.activeElement, goReverse);
     }
 }
@@ -77,12 +83,14 @@ function onKeyPress(e) {
  * Enables focus trap for a given element. Focus will cycle within the element on Tab/Shift+Tab.
  *
  * @param {HTMLElement} element - The element to trap focus inside.
+ * @param {HTMLElement} [boundary=element] - Enclosing focus boundary, including an iframe's parent dialog.
  */
-export function trap(element) {
+export function trap(element, boundary = element) {
     if (!element) {
         return;
     }
     element.addEventListener('keydown', onKeyPress);
+    boundaries.set(element, boundary);
     element[DATA_ISTRAPPING_KEY] = true;
 }
 
@@ -96,6 +104,7 @@ export function untrap(element) {
         return;
     }
     element.removeEventListener('keydown', onKeyPress);
+    boundaries.delete(element);
     delete element[DATA_ISTRAPPING_KEY];
 }
 

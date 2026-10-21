@@ -38,6 +38,7 @@ describe('CMS.Modal', function() {
     });
 
     afterEach(() => {
+        new Modal()._setModalState(false);
         resetRewire('showLoader');
         resetRewire('hideLoader');
     });

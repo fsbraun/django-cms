@@ -167,6 +167,10 @@
         position: relative;
         top: math.div($modal-header-button-area-size - $icon-size, 2);
     }
+    // Native buttons center their contents vertically already.
+    &[type="button"]:before {
+        top: 0;
+    }
     &:hover {
         color: $color-primary;
     }

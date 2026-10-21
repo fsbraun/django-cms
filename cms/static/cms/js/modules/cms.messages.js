@@ -62,7 +62,7 @@ class Messages {
 
         var msg = opts.message;
         var dir = opts.dir || 'center';
-        var delay = opts.delay || this.options.messageDelay;
+        var delay = opts.delay ?? this.options.messageDelay;
         var error = opts.error || false;
 
         var width = 320;
@@ -72,6 +72,14 @@ class Messages {
 
         // add content to element
         this.ui.messages.find('.cms-messages-inner').html(msg);
+        const announcements = this.ui.container.find('.cms-messages-status, .cms-messages-alert');
+
+        clearTimeout(this.announcementTimer);
+        announcements.empty();
+        this.announcementTimer = setTimeout(() => {
+            announcements.filter(error ? '.cms-messages-alert' : '.cms-messages-status')
+                .text(this.ui.messages.find('.cms-messages-inner').text());
+        }, 0);
 
         // error handling
         this.ui.messages.removeClass('cms-messages-error');
@@ -141,6 +149,8 @@ class Messages {
      * @method close
      */
     close() {
+        clearTimeout(this.timer);
+        clearTimeout(this.announcementTimer);
         this.ui.messages.fadeOut(this.options.messageDuration);
     }
 }
