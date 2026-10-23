@@ -59,6 +59,60 @@ test('Enter opens the Shortcuts dialog from the toolbar', async ({ authenticated
     const modal = page.getByRole('dialog', { name: 'Shortcuts', exact: true });
 
     await expect(modal).toBeVisible();
+    await expect(page.locator('.cms-toolbar-item-navigation-hover')).toHaveCount(0);
     await page.keyboard.press('Escape');
     await expect(modal).not.toBeVisible();
+    await expect(page.locator('.cms-toolbar-item-navigation > li > a').first()).toBeFocused();
+});
+
+
+test('f p opens the closed structure board and focuses its first placeholder', async ({ authenticatedPage: page }) => {
+    const edit = page.locator('.cms-btn-switch-edit');
+
+    if (await edit.count()) {
+        await page.goto(await edit.getAttribute('href'));
+        await expect(page.locator('html')).toHaveClass(/cms-ready/);
+    }
+    const board = page.getByRole('region', { name: 'Page structure' });
+
+    if (await board.isVisible()) {
+        await page.locator('.cms-toolbar-item-cms-mode-switcher a').first().focus();
+        await page.keyboard.press('Enter');
+    }
+    await expect(board).not.toBeVisible();
+    await page.keyboard.press('f');
+    await page.keyboard.press('p');
+    await expect(board).toBeVisible();
+    await expect(board.locator('.cms-dragarea').first()).toBeFocused();
+});
+
+
+test('f p, f t, and ? work while structure navigation and the toolbar are active', async ({ authenticatedPage: page }) => {
+    const edit = page.locator('.cms-btn-switch-edit');
+
+    if (await edit.count()) {
+        await page.goto(await edit.getAttribute('href'));
+        await expect(page.locator('html')).toHaveClass(/cms-ready/);
+    }
+    const area = page.locator('.cms-structure .cms-dragarea').first();
+    const toolbarItem = page.locator('.cms-toolbar-item-navigation > li > a').first();
+
+    await page.keyboard.press('f');
+    await page.keyboard.press('p');
+    await expect(area).toBeFocused();
+    await page.keyboard.press('f');
+    await page.keyboard.press('t');
+    await expect(toolbarItem).toBeFocused();
+    await page.keyboard.press('f');
+    await page.keyboard.press('p');
+    await expect(area).toBeFocused();
+    await page.keyboard.press('?');
+    await expect(page.getByRole('dialog', { name: 'Shortcuts', exact: true })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(area).toBeFocused();
+    await page.keyboard.press('f');
+    await page.keyboard.press('t');
+    await expect(toolbarItem).toBeFocused();
+    await page.keyboard.press('?');
+    await expect(page.getByRole('dialog', { name: 'Shortcuts', exact: true })).toBeVisible();
 });

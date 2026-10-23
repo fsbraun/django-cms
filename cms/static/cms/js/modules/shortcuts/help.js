@@ -1,4 +1,5 @@
 import Modal from '../cms.modal';
+import $ from 'jquery';
 
 import keyboard from '../keyboard';
 import tmpl from '../tmpl';
@@ -37,10 +38,11 @@ export default function initHelpShortcut() {
             height: 660,
             html: tmpl(template, { shortcutAreas: shortcutAreas })
         });
+        $(document).trigger('click.cms.toolbar');
     }
 
     keyboard.setContext('cms');
-    keyboard.bind('?', openModal);
+    keyboard.bind('?', openModal, 'global');
     if (helpClickHandler) {
         document.removeEventListener('click', helpClickHandler, true);
     }
@@ -51,6 +53,11 @@ export default function initHelpShortcut() {
         // Toolbar menus stop bubbling clicks. Capture native activation so Enter,
         // mouse clicks, and replacement toolbar markup all use the same action.
         event.stopPropagation();
+        // The submenu closes behind the dialog. Return focus to its visible
+        // top-level trigger when the dialog is dismissed.
+        const menu = event.target.closest('.cms-toolbar-item-navigation > li');
+
+        menu?.querySelector(':scope > a')?.focus();
         openModal(event);
     };
     document.addEventListener('click', helpClickHandler, true);

@@ -41,7 +41,7 @@ describe('toolbar focus shortcut', () => {
 
     afterEach(async () => {
         $(document).off('.cms.toolbar.focus');
-        keyboard.unbind(['f > t', 'alt+t'], 'cms');
+        keyboard.unbind(['f > t', 'alt+t'], 'global');
         keyboard.setContext('cms');
         await userEvent.cleanup();
         fixture.cleanup();

@@ -62,7 +62,7 @@ class Clipboard {
             minimizable: false,
             maximizable: false,
             resizable: false,
-            closeOnEsc: false
+            closeOnEsc: true
         });
 
         Helpers.removeEventListener(

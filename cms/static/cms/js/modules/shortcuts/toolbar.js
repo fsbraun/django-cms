@@ -50,7 +50,7 @@ export default function () {
         }
         active = true;
         target.focus();
-    });
+    }, 'global');
 
     // Delegate so toolbar refreshes do not discard the focus cycle. Keeping the
     // handler on the toolbar also lets dialogs and sideframes manage their focus.

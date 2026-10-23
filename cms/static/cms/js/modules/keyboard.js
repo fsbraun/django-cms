@@ -76,19 +76,15 @@ function handleKeydown(event) {
     if (isInputFocused()) {
         return;
     }
-    const context = contexts[getContext()];
+    const contextName = getContext();
+    const context = contexts[contextName] || {};
+    const globalShortcuts = contextName === 'modal' ? {} : (contexts.global || {});
     const key = toKeyCode(event);
+    const comboKey = lastKey ? `${lastKey} > ${key}` : null;
+    const callback = globalShortcuts[key] || globalShortcuts[comboKey] || context[key] || context[comboKey];
 
-    if (context) {
-        if (context[key]) {
-            context[key](event);
-        } else if (lastKey) {
-            const comboKey = `${lastKey} > ${key}`;
-
-            if (context[comboKey]) {
-                context[comboKey](event);
-            }
-        }
+    if (callback) {
+        callback(event);
     }
     lastKey = null;
 }

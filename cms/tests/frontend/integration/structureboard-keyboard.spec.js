@@ -147,3 +147,28 @@ test('a adds to the focused placeholder or plugin during normal Tab navigation',
     await expect(row.locator('..').locator('> .cms-collapsable-container > .cms-add-plugin-placeholder')).toBeAttached();
     await page.keyboard.press('Escape');
 });
+
+test('Escape closes the clipboard dialog and restores its contents', async ({ authenticatedPage: page }) => {
+    const row = page.locator('.cms-structure .cms-draggables-root > .cms-draggable > .cms-dragitem').first();
+
+    await row.locator('> .cms-submenu-settings').focus();
+    await page.keyboard.press('Enter');
+    const copy = row.getByRole('menuitem', { name: 'Copy', exact: true });
+
+    await copy.focus();
+    await page.keyboard.press('Enter');
+    const trigger = page.locator('.cms-clipboard-trigger a');
+
+    await expect(trigger.locator('..')).not.toHaveClass(/cms-toolbar-item-navigation-disabled/);
+    await page.locator('.cms-toolbar-item-navigation > li > a').first().focus();
+    await page.keyboard.press('Enter');
+    await trigger.focus();
+    await page.keyboard.press('Enter');
+    const modal = page.getByRole('dialog', { name: 'Clipboard', exact: true });
+
+    await expect(modal).toBeVisible();
+    await expect(modal.locator('.cms-clipboard-containers > .cms-draggable')).toHaveCount(1);
+    await page.keyboard.press('Escape');
+    await expect(modal).not.toBeVisible();
+    await expect(page.locator('.cms-clipboard > .cms-clipboard-containers > .cms-draggable')).toHaveCount(1);
+});

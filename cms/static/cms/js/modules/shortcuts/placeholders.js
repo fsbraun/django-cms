@@ -239,7 +239,7 @@ var bindPluginActionKeys = function () {
 
 /**
  * Binds [f p] / [alt+p] shortcuts to focus first placeholder.
- * Only works in structure mode.
+ * Opens structure mode when the board is closed.
  *
  * @function initPlaceholders
  * @public
@@ -255,15 +255,35 @@ export default function initPlaceholders() {
     keyboard.setContext('cms');
     keyboard.bind(['+', 'a'], addToSelection);
 
-    keyboard.bind(data.shortcut.split(' / '), function () {
-        if (CMS.settings.mode !== 'structure') {
+    keyboard.bind(data.shortcut.split(' / '), async function (event) {
+        event?.preventDefault();
+        const board = query('.cms-structure');
+
+        if (!board?.getClientRects().length) {
+            const structureBoard = CMS.API?.StructureBoard;
+
+            if (!structureBoard) {
+                return;
+            }
+            try {
+                if (await structureBoard.show() === false) {
+                    return;
+                }
+            } catch {
+                // Loading failures are handled by the board's navigation fallback.
+                return;
+            }
+        }
+        const dragareas = queryAll('.cms-structure .cms-dragarea')
+            .filter(area => area.getClientRects().length);
+
+        if (!dragareas.length || keyboard.getContext() === 'modal') {
             return;
         }
-        const dragareas = queryAll('.cms-structure .cms-dragarea');
 
         setTabIndex(dragareas, '0');
         focusElement(dragareas[0]);
         trap(query('.cms-structure-content'));
         keyboard.setContext('placeholders');
-    });
+    }, 'global');
 }

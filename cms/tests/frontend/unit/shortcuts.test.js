@@ -103,7 +103,7 @@ describe('shortcuts', function() {
         it('binds the shortcut', function() {
             initHelpModal();
             expect(keyboard.setContext).toHaveBeenCalledWith('cms');
-            expect(keyboard.bind).toHaveBeenCalledWith('?', jasmine.any(Function));
+            expect(keyboard.bind).toHaveBeenCalledWith('?', jasmine.any(Function), 'global');
         });
 
         it('shortcut opens modal', function() {
@@ -140,6 +140,15 @@ describe('shortcuts', function() {
             document.querySelector('#shortcut-menu a').focus();
             await userEvent.keyboard('{Enter}');
             expect(Modal.prototype.open).toHaveBeenCalledTimes(1);
+        });
+
+        it('closes the toolbar menu when opening the dialog', async function() {
+            const reset = vi.fn();
+
+            $(document).one('click.cms.toolbar', reset);
+            document.querySelector('#shortcut-menu a').focus();
+            await userEvent.keyboard('{Enter}');
+            expect(reset).toHaveBeenCalledTimes(1);
         });
 
         it('opens once for a pointer click', async function() {

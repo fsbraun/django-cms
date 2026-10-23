@@ -1,6 +1,7 @@
 import { userEvent } from 'vitest/browser';
 import CMS from '../../../static/cms/js/modules/cms.base';
 import keyboard from '../../../static/cms/js/modules/keyboard';
+import { untrap } from '../../../static/cms/js/modules/trap';
 import initPlaceholders from '../../../static/cms/js/modules/shortcuts/placeholders';
 
 describe('structure board add shortcut', () => {
@@ -30,7 +31,8 @@ describe('structure board add shortcut', () => {
     });
 
     afterEach(async () => {
-        keyboard.unbind(['+', 'a', 'f > p'], 'cms');
+        keyboard.unbind(['+', 'a'], 'cms');
+        keyboard.unbind('f > p', 'global');
         keyboard.setContext('cms');
         await userEvent.cleanup();
         fixture.cleanup();
@@ -73,5 +75,74 @@ describe('structure board add shortcut', () => {
         document.getElementById('outside').focus();
         await userEvent.keyboard('a');
         expect(added).not.toHaveBeenCalled();
+    });
+});
+
+
+describe('focus placeholders shortcut', () => {
+    let previousBoard;
+    let board;
+
+    beforeEach(() => {
+        window.CMS = CMS;
+        CMS.config = { lang: { shortcutAreas: [{}, { shortcuts: { placeholders: { shortcut: 'f > p / alt+p' } } }] } };
+        CMS.API = CMS.API || {};
+        previousBoard = CMS.API.StructureBoard;
+        fixture.set(`
+            <button id="focus-origin">Page action</button>
+            <div class="cms-structure" style="display:none"><div class="cms-structure-content"></div></div>
+        `);
+        board = document.querySelector('.cms-structure');
+        initPlaceholders();
+        document.getElementById('focus-origin').focus();
+    });
+
+    afterEach(async () => {
+        untrap(document.querySelector('.cms-structure-content'));
+        keyboard.unbind(['+', 'a'], 'cms');
+        keyboard.unbind(['f > p', 'alt+p'], 'global');
+        keyboard.setContext('cms');
+        CMS.API.StructureBoard = previousBoard;
+        await userEvent.cleanup();
+        fixture.cleanup();
+    });
+
+    it('opens the board and waits for loaded placeholders before focusing them', async () => {
+        let finishLoading;
+        const loading = new Promise(resolve => {
+            finishLoading = resolve;
+        });
+
+        CMS.API.StructureBoard = { show: vi.fn(() => loading.then(() => {
+            board.style.display = 'block';
+            board.firstChild.innerHTML = '<div class="cms-dragarea" id="loaded-area">Content</div>';
+        })) };
+        await userEvent.keyboard('fp');
+        expect(CMS.API.StructureBoard.show).toHaveBeenCalledOnce();
+        expect(document.activeElement.id).toBe('focus-origin');
+        finishLoading();
+        await vi.waitFor(() => expect(document.activeElement.id).toBe('loaded-area'));
+        expect(keyboard.getContext()).toBe('placeholders');
+    });
+
+    it('focuses an already open board without opening it again', async () => {
+        board.style.display = 'block';
+        board.firstChild.innerHTML = '<div class="cms-dragarea" id="existing-area">Content</div>';
+        CMS.API.StructureBoard = { show: vi.fn() };
+        await userEvent.keyboard('fp');
+        expect(CMS.API.StructureBoard.show).not.toHaveBeenCalled();
+        expect(document.activeElement.id).toBe('existing-area');
+    });
+
+    it('leaves focus alone when opening is unavailable or fails', async () => {
+        const refused = vi.fn(() => Promise.resolve(false));
+        const failed = vi.fn(() => Promise.reject(new Error('load failed')));
+
+        for (const show of [refused, failed]) {
+            CMS.API.StructureBoard = { show };
+            await userEvent.keyboard('fp');
+            expect(document.activeElement.id).toBe('focus-origin');
+            expect(keyboard.getContext()).toBe('cms');
+        }
     });
 });
