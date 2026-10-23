@@ -136,7 +136,7 @@
             text-transform: uppercase;
             margin-inline-start: 30px;
             cursor: pointer;
-            a {
+            a, button {
                 color: $btn-default-color !important;
                 font-size: $font-size-small !important;
                 &:hover {
@@ -629,4 +629,30 @@
     background: $white !important;
     opacity: .5;
     z-index: 9999;
+}
+
+// Native controls retain the existing board layout and expose a visible focus ring.
+.cms-structure, .cms-clipboard {
+    button.cms-submenu-btn {
+        padding: 0;
+        border: 0;
+    }
+    button.cms-dragitem-text, .cms-dragbar-toggler button {
+        border: 0;
+        background: transparent;
+        color: inherit;
+        font: inherit;
+        text-align: start;
+        cursor: pointer;
+    }
+    button.cms-dragitem-text {
+        width: calc(100% - #{$submenu-icon-area-size * 3 + $submenu-right * 4});
+    }
+    button:focus-visible, a:focus-visible, input:focus-visible, [role="menu"]:focus-visible {
+        outline: 2px solid $color-primary;
+        outline-offset: -2px;
+    }
+    .cms-dragitem:focus-within {
+        box-shadow: inset 0 0 0 1px $gray-light;
+    }
 }

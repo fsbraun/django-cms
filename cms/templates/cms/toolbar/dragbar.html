@@ -1,15 +1,23 @@
 {% load i18n l10n cms_tags cms_admin %}
 <div class="cms-dragbar cms-dragbar-{{ placeholder.pk|unlocalize }}">
+    <div class="cms-dragbar-title" title="{{ placeholder.get_label }}">
+        {{ placeholder.get_label }}
+        {% if placeholder.is_static %}<span class="cms-hover-tooltip cms-hover-tooltip-right" tabindex="-1" data-cms-tooltip="{{ placeholder.static_message }}"><span class="cms-icon cms-icon-external-placeholder cms-dragarea-static-icon"></span></span>{% endif %}
+        <span class="cms-dragbar-toggler">
+            <button type="button" class="cms-dragbar-expand-all">{% translate "Expand all" %}</button>
+            <button type="button" class="cms-dragbar-collapse-all">{% translate "Collapse all" %}</button>
+        </span>
+    </div>
     {% if object_is_immutable %}
         <div class="cms-submenu-btn cms-submenu-edit-obj cms-btn">
-            <a href="{% get_edit_url placeholder.source %}" class="cms-hover-tooltip cms-hover-tooltip-left cms-hover-tooltip-delay" data-cms-tooltip="{{ placeholder.edit_message }}"></a>
+            <a href="{% get_edit_url placeholder.source %}" class="cms-hover-tooltip cms-hover-tooltip-left cms-hover-tooltip-delay" aria-label="{{ placeholder.edit_message }}" data-cms-tooltip="{{ placeholder.edit_message }}"></a>
         </div>
     {% else %}
-        <div class="cms-submenu-btn cms-submenu-add cms-btn">
+        <button type="button" class="cms-submenu-btn cms-submenu-add cms-btn" aria-label="{% blocktrans with name=placeholder.get_label %}Add plugin to {{ name }}{% endblocktrans %}">
             <span class="cms-hover-tooltip cms-hover-tooltip-left cms-hover-tooltip-delay" data-cms-tooltip="{% translate "Add plugin" %}"></span>
-        </div>
+        </button>
     {% endif %}
-    <div class="cms-submenu-settings cms-submenu-btn cms-btn"></div>
+    <button type="button" class="cms-submenu-settings cms-submenu-btn cms-btn" aria-haspopup="menu" aria-expanded="false" aria-label="{% blocktrans with name=placeholder.get_label %}Actions for {{ name }}{% endblocktrans %}"></button>
     <div class="cms-submenu-dropdown cms-submenu-dropdown-settings cms-touch-action-pan-y">
         <div class="cms-dropdown-inner">
             {% if placeholder.is_static %}
@@ -32,16 +40,8 @@
         </div>
     </div>
     <div class="cms-plugin-picker cms-touch-action-pan-y">
-        <div class="cms-quicksearch"><label><input type="text" placeholder="{% translate 'Filter plugins...' %}" /></label></div>
+        <div class="cms-quicksearch"><label><span class="cms-screen-reader-only">{% translate "Filter plugins" %}</span><input type="text" placeholder="{% translate 'Filter plugins...' %}" /></label></div>
+        <div class="cms-screen-reader-only cms-plugin-picker-status" role="status" aria-atomic="true"></div>
         {# plugin child classes here #}
-    </div>
-
-    <div class="cms-dragbar-title" title="{{ placeholder.get_label }}">
-        {{ placeholder.get_label }}
-        {% if placeholder.is_static %}<span class="cms-hover-tooltip cms-hover-tooltip-right" tabindex="-1" data-cms-tooltip="{{ placeholder.static_message }}"><span class="cms-icon cms-icon-external-placeholder cms-dragarea-static-icon"></span></span>{% endif %}
-        <span class="cms-dragbar-toggler">
-            <a href="#" class="cms-dragbar-expand-all" tabindex="-1">{% translate "Expand all" %}</a>
-            <a href="#" class="cms-dragbar-collapse-all" tabindex="-1">{% translate "Collapse all" %}</a>
-        </span>
     </div>
 </div>

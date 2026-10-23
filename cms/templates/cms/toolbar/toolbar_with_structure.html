@@ -62,7 +62,7 @@
         </div>
     </div>
     {# start: structure #}
-    <div class="cms-structure">
+    <div class="cms-structure" role="region" aria-label="{% translate 'Page structure' %}">
         <div class="cms-structure-content cms-touch-action-pan-y">
         {% if cms_renderer.load_structure %}
             {% for placeholder in cms_renderer.get_rendered_editable_placeholders %}
@@ -70,10 +70,10 @@
                     <div class="cms-dragarea cms-dragarea-{{ placeholder.pk|unlocalize }}{% if placeholder.is_static %} cms-dragarea-static{% endif %}">
                         {% include cms_toolbar.templates.dragbar_template with placeholder=placeholder object_is_immutable=object_is_immutable %}
                         {% if object_is_immutable %}
-                        <div class="cms-draggables cms-draggables-root cms-drag-disabled">
+                        <div role="list" aria-label="{{ placeholder.get_label }}" class="cms-draggables cms-draggables-root cms-drag-disabled">
                         <div class="cms-draggables-empty">{% translate "Placeholder not editable" %}</div>
                         {% else %}
-                        <div class="cms-draggables cms-draggables-root">
+                        <div role="list" aria-label="{{ placeholder.get_label }}" class="cms-draggables cms-draggables-root">
                         <div class="cms-draggables-empty">{% translate "Drop a plugin here" %}</div>
                         {% endif %}
                             {% for plugin in placeholder.get_cached_plugins %}

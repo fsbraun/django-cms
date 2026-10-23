@@ -6,7 +6,9 @@ import keyboard from '../keyboard.js';
 const queryAll = (selector, root = document) => Array.from(root.querySelectorAll(selector));
 const query = (selector, root = document) => root?.querySelector(selector);
 const triggerPointerUp = el => {
-    if (el) {
+    if (el?.tagName === 'BUTTON') {
+        el.click();
+    } else if (el) {
         el.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
     }
 };
@@ -22,6 +24,28 @@ const focusElement = el => {
         el.focus();
     }
 };
+
+/** Add to the focused plugin, or the active placeholder when no plugin is focused. */
+function addToSelection(event) {
+    const board = query('.cms-structure');
+
+    if (!board?.getClientRects().length) {
+        return;
+    }
+    const active = document.activeElement;
+    const plugin = active.closest('.cms-structure .cms-draggable');
+    const area = active.closest('.cms-structure .cms-dragarea') || query('.cms-dragarea', board);
+    const selector = plugin ? ':scope > .cms-dragitem > .cms-submenu-add' :
+        ':scope > .cms-dragbar > .cms-submenu-add';
+    const button = query(selector, plugin || area);
+
+    if (!button || button.disabled || button.matches('.cms-btn-disabled, [aria-disabled="true"]')) {
+        return;
+    }
+    event?.preventDefault();
+    button.focus();
+    triggerPointerUp(button);
+}
 
 /**
  * Binds shortcuts:
@@ -61,16 +85,7 @@ var bindPlaceholderKeys = function () {
         keyboard.setContext('plugins');
     });
 
-    keyboard.bind(['+', 'a'], function () {
-        const area = document.activeElement.closest('.cms-dragarea');
-
-        if (!area) {
-            return;
-        }
-        const addBtn = query('.cms-submenu-add', area);
-
-        triggerPointerUp(addBtn);
-    });
+    keyboard.bind(['+', 'a'], addToSelection);
 
     keyboard.bind('x', function () {
         const area = document.activeElement.closest('.cms-dragarea');
@@ -78,7 +93,8 @@ var bindPlaceholderKeys = function () {
         if (!area) {
             return;
         }
-        const toggler = query('.cms-dragbar-toggler a', area);
+        const toggler = queryAll('.cms-dragbar-toggler a, .cms-dragbar-toggler button', area)
+            .find(element => element.getClientRects().length);
 
         triggerClick(toggler);
     });
@@ -165,16 +181,8 @@ var bindPluginKeys = function () {
 
         triggerClick(editBtn);
     });
-    keyboard.bind(['+', 'a'], function () {
-        const plugin = document.activeElement.closest('.cms-dragitem');
+    keyboard.bind(['+', 'a'], addToSelection);
 
-        if (!plugin) {
-            return;
-        }
-        const addBtn = query('.cms-submenu-add', plugin);
-
-        triggerPointerUp(addBtn);
-    });
     keyboard.bind('x', function () {
         const plugin = document.activeElement.closest('.cms-dragitem');
 
@@ -245,6 +253,7 @@ export default function initPlaceholders() {
     bindPluginActionKeys();
 
     keyboard.setContext('cms');
+    keyboard.bind(['+', 'a'], addToSelection);
 
     keyboard.bind(data.shortcut.split(' / '), function () {
         if (CMS.settings.mode !== 'structure') {

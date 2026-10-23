@@ -1,7 +1,7 @@
 {% load i18n l10n cms_tags %}
 
 {% with allow_children=plugin.child_class_restrictions|join:"" disable_child_plugins=plugin.get_plugin_class.disable_child_plugins is_slot=plugin.get_plugin_class.is_slot %}
-<div class="cms-draggable cms-draggable-{{ plugin.pk|unlocalize }}
+<div role="listitem" class="cms-draggable cms-draggable-{{ plugin.pk|unlocalize }}
     {% if is_slot %}cms-slot{% endif %}
     {{ plugin.add_structureboard_classes|default:'' }}
     {% if object_is_immutable %}cms-drag-disabled{% endif %}
@@ -10,23 +10,26 @@
 
     <div class="cms-dragitem cms-dragitem-handler
         {% if plugin.child_plugin_instances %} cms-dragitem-collapsable{% endif %}">
+        <span class="cms-dragitem-text" title="{{ plugin.plugin_type }} ID: {{ plugin.pk|unlocalize }}"><strong>{{ plugin.get_plugin_name }}</strong> {{ plugin.get_short_description }}</span>
         {% if not disabled_child %}
             {% if not object_is_immutable %}
                 {% if not is_slot %}
-                    <div class="cms-submenu-btn cms-submenu-edit cms-btn" data-rel="edit">
+                    <button type="button" class="cms-submenu-btn cms-submenu-edit cms-btn" data-rel="edit" aria-label="{% blocktrans with name=plugin.get_plugin_name %}Edit {{ name }}{% endblocktrans %}">
                         <span class="cms-hover-tooltip cms-hover-tooltip-left cms-hover-tooltip-delay" data-cms-tooltip="{% trans "Edit" %}"></span>
-                    </div>
+                    </button>
                 {% endif %}
-                <div class="cms-submenu-btn cms-submenu-add cms-btn
-                    {% if not allow_children %} cms-btn-disabled{% endif %}">
+                <button type="button" class="cms-submenu-btn cms-submenu-add cms-btn
+                    {% if not allow_children %} cms-btn-disabled{% endif %}"
+                    aria-label="{% blocktrans with name=plugin.get_plugin_name %}Add plugin to {{ name }}{% endblocktrans %}"
+                    {% if not allow_children %}disabled{% endif %}>
                     {% if not allow_children %}
                     <span class="cms-hover-tooltip" data-cms-tooltip="{% trans "You cannot add plugins to this plugin." %}"></span>
                     {% else %}
                     <span class="cms-hover-tooltip cms-hover-tooltip-left cms-hover-tooltip-delay" data-cms-tooltip="{% trans "Add plugin" %}"></span>
                     {% endif %}
-                </div>
+                </button>
             {% endif %}
-            <div class="cms-submenu cms-submenu-settings cms-submenu-btn cms-btn"></div>
+            <button type="button" class="cms-submenu cms-submenu-settings cms-submenu-btn cms-btn" aria-expanded="false" aria-haspopup="menu" aria-label="{% blocktrans with name=plugin.get_plugin_name %}Actions for {{ name }}{% endblocktrans %}"></button>
         {% else %}
             <div class="cms-hover-tooltip cms-hover-tooltip-left cms-plugin-disabled" tabindex="-1"
                 data-cms-tooltip="{% trans "This plugin cannot be moved or edited outside of its parent" %}">
@@ -56,15 +59,15 @@
         </div>
         {% if not clipboard %}
             <div class="cms-plugin-picker cms-touch-action-pan-y">
-                <div class="cms-quicksearch"><label><input type="text" placeholder="{% trans 'Filter plugins...' %}" /></label></div>
+                <div class="cms-quicksearch"><label><span class="cms-screen-reader-only">{% trans "Filter plugins" %}</span><input type="text" placeholder="{% trans 'Filter plugins...' %}" /></label></div>
+                <div class="cms-screen-reader-only cms-plugin-picker-status" role="status" aria-atomic="true"></div>
                 {# plugin child classes here #}
             </div>
         {% endif %}
 
-        <span class="cms-dragitem-text" title="{{ plugin.plugin_type }} ID: {{ plugin.pk|unlocalize }}"><strong>{{ plugin.get_plugin_name }}</strong> {{ plugin.get_short_description }}</span>
     </div>
 
-    <div class="cms-collapsable-container cms-hidden
+    <div role="list" aria-label="{% blocktrans with name=plugin.get_plugin_name %}Children of {{ name }}{% endblocktrans %}" class="cms-collapsable-container cms-hidden
         {% if allow_children %} cms-draggables{% if object_is_immutable %} cms-drag-disabled{% endif %}{% endif %}">
         {% if plugin.child_plugin_instances %}
             {% for child in plugin.child_plugin_instances %}

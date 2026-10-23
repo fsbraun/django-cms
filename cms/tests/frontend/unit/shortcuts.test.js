@@ -1,4 +1,5 @@
 'use strict';
+import { userEvent } from 'vitest/browser';
 import initShortcuts from '../../../static/cms/js/modules/shortcuts';
 import initHelpModal from '../../../static/cms/js/modules/shortcuts/help';
 import initCreateModal from '../../../static/cms/js/modules/shortcuts/create-modal';
@@ -116,6 +117,39 @@ describe('shortcuts', function() {
                 title: CMS.config.lang.shortcuts,
                 html: jasmine.any(String)
             });
+        });
+    });
+
+    describe('toolbar Shortcuts link', function() {
+        beforeEach(function() {
+            $(fixture.el).append('<div id="shortcut-menu" style="position:fixed;top:100px;left:100px;z-index:1000000"><a class="cms-show-shortcuts" href="#">Shortcuts</a></div>');
+            // The live toolbar stops clicks before they reach document delegation.
+            $('#shortcut-menu').on('click', event => event.stopPropagation());
+            spyOn(Modal.prototype, 'open');
+            initHelpModal();
+        });
+
+        afterEach(async function() {
+            await userEvent.cleanup();
+        });
+
+        it('opens once when Enter activates the link', async function() {
+            document.querySelector('#shortcut-menu a').focus();
+            await userEvent.keyboard('{Enter}');
+            expect(Modal.prototype.open).toHaveBeenCalledTimes(1);
+        });
+
+        it('opens once for a pointer click', async function() {
+            await userEvent.click(document.querySelector('#shortcut-menu a'));
+            expect(Modal.prototype.open).toHaveBeenCalledTimes(1);
+        });
+
+        it('handles refreshed toolbar markup without adding duplicate listeners', async function() {
+            initHelpModal();
+            $('#shortcut-menu').html('<a class="cms-show-shortcuts" href="#">Shortcuts</a>');
+            document.querySelector('#shortcut-menu a').focus();
+            await userEvent.keyboard('{Enter}');
+            expect(Modal.prototype.open).toHaveBeenCalledTimes(1);
         });
     });
 

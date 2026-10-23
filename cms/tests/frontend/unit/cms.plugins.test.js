@@ -1892,12 +1892,12 @@ describe('CMS.Plugin', function() {
             plugin._setupActions(nav);
             link.trigger(Plugin.click);
             expect(plugin.copyPlugin).not.toHaveBeenCalled();
-            expect(hideLoader).toHaveBeenCalledTimes(1);
+            expect(hideLoader).not.toHaveBeenCalled();
 
             link.parent().removeClass('cms-submenu-item-disabled');
             link.trigger(Plugin.click);
             expect(plugin.copyPlugin).toHaveBeenCalledTimes(1);
-            expect(hideLoader).toHaveBeenCalledTimes(1);
+            expect(hideLoader).not.toHaveBeenCalled();
         });
 
         it('delegates to cutPlugin', function() {
@@ -1920,12 +1920,12 @@ describe('CMS.Plugin', function() {
             plugin._setupActions(nav);
             link.trigger(Plugin.click);
             expect(plugin.pastePlugin).not.toHaveBeenCalled();
-            expect(hideLoader).toHaveBeenCalledTimes(1);
+            expect(hideLoader).not.toHaveBeenCalled();
 
             link.parent().removeClass('cms-submenu-item-disabled');
             link.trigger(Plugin.click);
             expect(plugin.pastePlugin).toHaveBeenCalledTimes(1);
-            expect(hideLoader).toHaveBeenCalledTimes(2);
+            expect(hideLoader).toHaveBeenCalledTimes(1);
         });
 
         it('delegates to deletePlugin', function() {
@@ -2001,44 +2001,42 @@ describe('CMS.Plugin', function() {
             expect($(document)).not.toHandle(plugin._getNamepacedEvent(Plugin.keyDown, 'traverse'));
         });
 
-        it('unbinds old traversing keydown events', function() {
+        it('binds picker navigation locally without stealing Tab or document events', function() {
             $(fixture.el).append('<div class="cms-modal-markup"></div>');
-            plugin.ui.dragitem.find('.cms-plugin-picker').appendTo('.cms-modal-markup');
-            var spy = jasmine.createSpy();
-            $(document).on(plugin._getNamepacedEvent(Plugin.keyDown, 'traverse'), spy);
+            const picker = plugin.ui.dragitem.find('.cms-plugin-picker').show().appendTo('.cms-modal-markup');
+
+            picker.append('<div class="cms-submenu-item"><a href="#">First</a></div>');
             plugin._setupKeyboardTraversing();
-            $(document).trigger(plugin._getNamepacedEvent(Plugin.keyDown, 'traverse'));
-            expect(spy).not.toHaveBeenCalled();
+            plugin._setupKeyboardTraversing();
+            const down = new $.Event('keydown', { key: 'ArrowDown' });
+
+            picker.trigger(down);
+            expect(down.isDefaultPrevented()).toBe(true);
+            expect(document.activeElement).toBe(picker.find('a:visible')[0]);
+            for (const shiftKey of [false, true]) {
+                const tab = new $.Event('keydown', { key: 'Tab', shiftKey });
+
+                picker.trigger(tab);
+                expect(tab.isDefaultPrevented()).toBe(false);
+            }
+            const outside = new $.Event('keydown', { key: 'ArrowDown' });
+
+            $(document).trigger(outside);
+            expect(outside.isDefaultPrevented()).toBe(false);
         });
 
-        it('binds traversing keydown events', function() {
+        it('keeps navigation available when the filter has no results', function() {
             $(fixture.el).append('<div class="cms-modal-markup"></div>');
-            plugin.ui.dragitem.find('.cms-plugin-picker').show().appendTo('.cms-modal-markup');
+            const picker = plugin.ui.dragitem.find('.cms-plugin-picker').show().appendTo('.cms-modal-markup');
+
+            picker.find('.cms-submenu-item').hide();
             plugin._setupKeyboardTraversing();
+            const tab = new $.Event('keydown', { key: 'Tab' });
+            const down = new $.Event('keydown', { key: 'ArrowDown' });
 
-            var down = new $.Event(plugin._getNamepacedEvent(Plugin.keyDown, 'traverse'), {
-                keyCode: CMS.KEYS.DOWN
-            });
-            var down1 = new $.Event(plugin._getNamepacedEvent(Plugin.keyDown, 'traverse'), {
-                keyCode: CMS.KEYS.TAB
-            });
-            var up = new $.Event(plugin._getNamepacedEvent(Plugin.keyDown, 'traverse'), {
-                keyCode: CMS.KEYS.UP
-            });
-            var up1 = new $.Event(plugin._getNamepacedEvent(Plugin.keyDown, 'traverse'), {
-                keyCode: CMS.KEYS.TAB,
-                shiftKey: true
-            });
-
-            spyOn($.Event.prototype, 'preventDefault');
-            $(document).trigger(down);
-            expect($.Event.prototype.preventDefault).toHaveBeenCalledTimes(1);
-            $(document).trigger(down1);
-            expect($.Event.prototype.preventDefault).toHaveBeenCalledTimes(2);
-            $(document).trigger(up);
-            expect($.Event.prototype.preventDefault).toHaveBeenCalledTimes(3);
-            $(document).trigger(up1);
-            expect($.Event.prototype.preventDefault).toHaveBeenCalledTimes(4);
+            picker.trigger(tab).trigger(down);
+            expect(tab.isDefaultPrevented()).toBe(false);
+            expect(down.isDefaultPrevented()).toBe(false);
         });
     });
 

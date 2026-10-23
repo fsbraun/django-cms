@@ -16,6 +16,7 @@ import isEqual from 'lodash-es/isEqual.js';
 import zip from 'lodash-es/zip.js';
 import ls from 'local-storage';
 
+import { syncDisclosure } from './cms.structureboard.accessibility';
 import './jquery.ui.custom';
 import './jquery.ui.touchpunch';
 import './jquery.ui.nestedsortable';
@@ -732,6 +733,7 @@ class StructureBoard {
             .nestedSortable({
                 items: '> .cms-draggable:not(.cms-drag-disabled):not(.cms-draggable-disabled .cms-draggable)',
                 placeholder: 'cms-droppable',
+                cancel: 'input, textarea, select, option, button:not(.cms-dragitem-text)',
                 connectWith: '.cms-draggables:not(.cms-hidden)',
                 tolerance: 'intersect',
                 toleranceElement: '> div',
@@ -1546,6 +1548,17 @@ class StructureBoard {
      */
     static _initializeGlobalHandlers() {
         placeholders = $('.cms-dragarea:not(.cms-clipboard-containers)');
+        $(document).off('.cms.structurecontrols').on(
+            'keydown.cms.structurecontrols keyup.cms.structurecontrols',
+            '.cms-structure button, .cms-clipboard button, .cms-structure [role="menuitem"], ' +
+                '.cms-clipboard [role="menuitem"]',
+            event => {
+                // Native activation must not also trigger the global mode shortcut.
+                if (event.key === ' ' || event.key === 'Enter') {
+                    event.stopPropagation();
+                }
+            }
+        );
     }
 
     /**
@@ -1597,6 +1610,7 @@ class StructureBoard {
             el.find('> .cms-collapsable-container').removeClass('cms-hidden');
             el.find('> .cms-dragitem').addClass('cms-dragitem-expanded');
         }
+        syncDisclosure(el.children('.cms-dragitem'));
     }
 
     /**
@@ -1617,6 +1631,7 @@ class StructureBoard {
             } else {
                 pluginDragItem.removeClass('cms-dragitem-collapsable');
             }
+            syncDisclosure(pluginDragItem);
         });
     }
 
@@ -1810,6 +1825,9 @@ StructureBoard._initializeDragItemsStates = function _initializeDragItemsStates(
             el.find('> .cms-collapsable-container').removeClass('cms-hidden');
             el.find('> .cms-dragitem').addClass('cms-dragitem-expanded');
         }
+    });
+    $('.cms-draggable > .cms-dragitem').each(function() {
+        syncDisclosure($(this));
     });
 };
 

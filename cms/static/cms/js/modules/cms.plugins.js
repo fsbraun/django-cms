@@ -5,6 +5,7 @@ import Modal from './cms.modal';
 import StructureBoard from './cms.structureboard';
 import $ from 'jquery';
 import nextUntil from './nextuntil';
+import { syncDisclosure, prepareSettingsMenu } from './cms.structureboard.accessibility';
 
 import debounce from 'lodash-es/debounce.js';
 import uniqWith from 'lodash-es/uniqWith.js';
@@ -234,7 +235,7 @@ class Plugin {
         this.ui.draggables = this.ui.dragbar.closest('.cms-dragarea').find('> .cms-draggables');
         this.ui.submenu = this.ui.dragbar.find('.cms-submenu-settings');
         var title = this.ui.dragbar.find('.cms-dragbar-title');
-        var togglerLinks = this.ui.dragbar.find('.cms-dragbar-toggler a');
+        var togglerLinks = this.ui.dragbar.find('.cms-dragbar-toggler a, .cms-dragbar-toggler button');
         var expanded = 'cms-dragbar-title-expanded';
 
         // register the subnav on the placeholder
@@ -252,6 +253,7 @@ class Plugin {
             } else {
                 that._expandAll(title);
             }
+            title.find('.cms-dragbar-toggler button:visible')[0]?.focus();
         });
 
         if ($.inArray(this.options.placeholder_id, CMS.settings.dragbars) !== -1) {
@@ -987,9 +989,11 @@ class Plugin {
         this.ui.dropdown = nav.siblings('.cms-submenu-dropdown-settings');
         var dropdown = this.ui.dropdown;
 
+        const activation = nav.is('button') ? Plugin.click : Plugin.pointerUp;
+
         nav
-            .off(Plugin.pointerUp)
-            .on(Plugin.pointerUp, function(e) {
+            .off(activation)
+            .on(activation, function(e) {
                 e.preventDefault();
                 e.stopPropagation();
                 var trigger = $(this);
@@ -1019,6 +1023,13 @@ class Plugin {
                 // required for scrolling on mobile
                 e.stopPropagation();
             });
+
+        nav.off('keydown.cms.structuremenu').on('keydown.cms.structuremenu', function(event) {
+            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+                event.preventDefault();
+                that._showSettingsMenu($(this), event.key === 'ArrowUp');
+            }
+        });
 
         that._setupActions(nav);
         // prevent propagation
@@ -1134,6 +1145,7 @@ class Plugin {
                 }
                 var dropdown = $('.cms-modal-markup .cms-plugin-picker');
 
+                that._announcePluginResults(dropdown);
                 if (!isTouching) {
                     // only focus the field if using mouse
                     // otherwise keyboard pops up
@@ -1155,7 +1167,7 @@ class Plugin {
                 // which in turn results in pep triggering pointercancel
                 e.stopPropagation();
             })
-            .on(Plugin.pointerUp, function(e) {
+            .on(nav.is('button') ? Plugin.click : Plugin.pointerUp, function(e) {
                 e.preventDefault();
                 e.stopPropagation();
 
@@ -1328,7 +1340,7 @@ class Plugin {
             that._filterPluginsList(pluginsPicker, input);
         }, FILTER_DEBOUNCE_TIMER);
 
-        plugins.find('> .cms-quicksearch').find('input').on(Plugin.keyUp, handler).on(
+        plugins.find('> .cms-quicksearch').find('input').on('input.cms.plugin ' + Plugin.keyUp, handler).on(
             Plugin.keyUp,
             debounce(function(e) {
                 var input;
@@ -1388,6 +1400,10 @@ class Plugin {
 
         if (e.data && e.data.nav) {
             nav = e.data.nav;
+        }
+
+        if ($(e.target).closest('.cms-submenu-item-disabled, [aria-disabled="true"]').length) {
+            return;
         }
 
         // show loader and make sure scroll doesn't jump
@@ -1472,36 +1488,26 @@ class Plugin {
      */
     _setupKeyboardTraversing() {
         var dropdown = $('.cms-modal-markup .cms-plugin-picker');
-        const keyDownTraverseEvent = this._getNamepacedEvent(Plugin.keyDown, 'traverse');
 
         if (!dropdown.length) {
             return;
         }
-        // add key events
-        $document.off(keyDownTraverseEvent);
-        // istanbul ignore next: not really possible to reproduce focus state in unit tests
-        $document.on(keyDownTraverseEvent, function(e) {
-            var anchors = dropdown.find('.cms-submenu-item:visible a');
-            var index = anchors.index(anchors.filter(':focus'));
+        // Tab belongs to the shared modal focus trap, including search and close.
+        dropdown.off('keydown.cms.pluginpicker').on('keydown.cms.pluginpicker', function(event) {
+            if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') {
+                return;
+            }
+            const anchors = dropdown.find('.cms-submenu-item:visible a');
+            const index = anchors.index(document.activeElement);
+            let next = (index + (event.key === 'ArrowDown' ? 1 : -1) + anchors.length) % anchors.length;
 
-            // bind arrow down and tab keys
-            if (e.keyCode === KEYS.DOWN || (e.keyCode === KEYS.TAB && !e.shiftKey)) {
-                e.preventDefault();
-                if (index >= 0 && index < anchors.length - 1) {
-                    anchors.eq(index + 1).focus();
-                } else {
-                    anchors.eq(0).focus();
-                }
+            if (index < 0) {
+                next = event.key === 'ArrowDown' ? 0 : anchors.length - 1;
             }
 
-            // bind arrow up and shift+tab keys
-            if (e.keyCode === KEYS.UP || (e.keyCode === KEYS.TAB && e.shiftKey)) {
-                e.preventDefault();
-                if (anchors.is(':focus')) {
-                    anchors.eq(index - 1).focus();
-                } else {
-                    anchors.eq(anchors.length).focus();
-                }
+            if (anchors.length) {
+                event.preventDefault();
+                anchors[next].focus();
             }
         });
     }
@@ -1513,18 +1519,22 @@ class Plugin {
      * @private
      * @param {jQuery} nav trigger element
      */
-    _showSettingsMenu(nav) {
+    _showSettingsMenu(nav, last = false) {
         this._checkIfPasteAllowed();
 
         var dropdown = this.ui.dropdown;
         var parents = nav.parentsUntil('.cms-dragarea').last();
         var MIN_SCREEN_MARGIN = 10;
 
-        nav.addClass('cms-btn-active');
+        prepareSettingsMenu(nav, dropdown, () => Plugin._hideSettingsMenu(nav));
+        nav.addClass('cms-btn-active').attr('aria-expanded', 'true');
         parents.addClass('cms-z-index-9999');
 
         // set visible states
         dropdown.show();
+        const available = dropdown.find('[role="menuitem"]').filter(':visible').not('[aria-disabled="true"]');
+
+        (available.length ? available.eq(last ? -1 : 0) : dropdown)[0]?.focus();
 
         // calculate dropdown positioning
         if (
@@ -1554,6 +1564,7 @@ class Plugin {
         // cancel if query is zero
         if (query === '') {
             items.add(titles).show();
+            this._announcePluginResults(list);
             return false;
         }
 
@@ -1592,6 +1603,14 @@ class Plugin {
         });
 
         mostRecentItems.hide();
+        this._announcePluginResults(list);
+    }
+
+    _announcePluginResults(list) {
+        const count = list.find('.cms-submenu-item:not(.cms-submenu-item-title):visible a').length;
+        const message = (CMS.config.lang.pluginResults || '%s plugins available').replace('%s', count);
+
+        list.find('.cms-plugin-picker-status').text(message);
     }
 
     /**
@@ -1616,6 +1635,9 @@ class Plugin {
             return;
         }
 
+        // Move focus out of descendants before hiding them.
+        this._focusBeforeCollapse(el, draggable);
+
         // collapsable function and save states
         if (el.hasClass('cms-dragitem-expanded')) {
             settings.states.splice($.inArray(id, settings.states), 1);
@@ -1624,6 +1646,7 @@ class Plugin {
                 .parent()
                 .find('> .cms-collapsable-container')
                 .addClass('cms-hidden');
+            syncDisclosure(el);
 
             if ($document.data('expandmode')) {
                 items = draggable.find('.cms-draggable').find('.cms-dragitem-collapsable');
@@ -1645,6 +1668,7 @@ class Plugin {
                 .parent()
                 .find('> .cms-collapsable-container')
                 .removeClass('cms-hidden');
+            syncDisclosure(el);
 
             if ($document.data('expandmode')) {
                 items = draggable.find('.cms-draggable').find('.cms-dragitem-collapsable');
@@ -1668,6 +1692,13 @@ class Plugin {
 
         // save settings
         Helpers.setSettings(settings);
+    }
+
+    _focusBeforeCollapse(row, draggable) {
+        if (row.hasClass('cms-dragitem-expanded') &&
+            draggable.children('.cms-collapsable-container').has(document.activeElement).length) {
+            row.children('.cms-dragitem-text')[0]?.focus();
+        }
     }
 
     _updatePlaceholderCollapseState() {
@@ -1722,6 +1753,8 @@ class Plugin {
 
         var dragitem = this.ui.draggable.find('> .cms-dragitem');
 
+        syncDisclosure(dragitem);
+
         // check which button should be shown for collapsemenu
         var els = this.ui.draggable.find('.cms-dragitem-collapsable');
         var open = els.filter('.cms-dragitem-expanded');
@@ -1730,11 +1763,9 @@ class Plugin {
             this.ui.draggable.find('.cms-dragbar-title').addClass('cms-dragbar-title-expanded');
         }
 
-        // attach events to draggable
-        // debounce here required because on some devices click is not triggered,
-        // so we consolidate latest click and touch event to run the collapse only once
-        dragitem.find('> .cms-dragitem-text').on(
-            Plugin.touchEnd + ' ' + Plugin.click,
+        // Delegate so disclosure buttons can be replaced when child plugins change.
+        dragitem.off('click.cms.disclosure').on(
+            'click.cms.disclosure', '> .cms-dragitem-text',
             debounce(function() {
                 if (!dragitem.hasClass('cms-dragitem-collapsable')) {
                     return;
@@ -1922,7 +1953,12 @@ Plugin._hideSettingsMenu = function(navEl) {
     if (!nav.length) {
         return;
     }
-    nav.removeClass('cms-btn-active');
+    const menuHadFocus = nav.siblings('.cms-submenu-dropdown').has(document.activeElement).length;
+
+    nav.removeClass('cms-btn-active').attr('aria-expanded', 'false');
+    if (menuHadFocus) {
+        nav[0]?.focus();
+    }
 
     // set correct active state
     nav.closest('.cms-draggable').data('active', false);

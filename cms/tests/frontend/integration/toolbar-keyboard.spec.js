@@ -46,3 +46,20 @@ test('open toolbar menus stay in the cycle and Escape leaves the toolbar', async
     await expect(page.locator('#keyboard-origin')).toBeFocused();
     await expect(page.locator('.cms-toolbar-item-navigation-hover')).toHaveCount(0);
 });
+
+test('Enter opens the Shortcuts dialog from the toolbar and returns focus on close', async ({ authenticatedPage: page }) => {
+    await page.keyboard.press('f');
+    await page.keyboard.press('t');
+    await page.keyboard.press('Enter');
+    const shortcuts = page.locator('a.cms-show-shortcuts, .cms-show-shortcuts a').first();
+
+    await expect(shortcuts).toBeVisible();
+    await shortcuts.focus();
+    await page.keyboard.press('Enter');
+    const modal = page.getByRole('dialog', { name: 'Shortcuts', exact: true });
+
+    await expect(modal).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(modal).not.toBeVisible();
+    await expect(shortcuts).toBeFocused();
+});

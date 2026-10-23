@@ -1,9 +1,10 @@
 import Modal from '../cms.modal';
-import $ from 'jquery';
 
 import keyboard from '../keyboard';
 import tmpl from '../tmpl';
 import template from './help.html';
+
+let helpClickHandler;
 
 /**
  * Binds [?] to open modal with shorcuts listing.
@@ -40,5 +41,17 @@ export default function initHelpShortcut() {
 
     keyboard.setContext('cms');
     keyboard.bind('?', openModal);
-    $(document).on('pointerup.cms', '.cms-show-shortcuts', openModal);
+    if (helpClickHandler) {
+        document.removeEventListener('click', helpClickHandler, true);
+    }
+    helpClickHandler = event => {
+        if (!event.target.closest('.cms-show-shortcuts')) {
+            return;
+        }
+        // Toolbar menus stop bubbling clicks. Capture native activation so Enter,
+        // mouse clicks, and replacement toolbar markup all use the same action.
+        event.stopPropagation();
+        openModal(event);
+    };
+    document.addEventListener('click', helpClickHandler, true);
 }
