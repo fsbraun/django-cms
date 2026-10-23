@@ -6,6 +6,7 @@ import $ from 'jquery';
 
 import { Helpers, KEYS } from './cms.base';
 import PageTreeDropdowns from './cms.pagetree.dropdown';
+import PageTreeKeyboard from './cms.pagetree.keyboard';
 import PageTreeStickyHeader from './cms.pagetree.stickyheader';
 // switched from commonjs 'lodash' bundle to per-method ESM imports for better tree-shaking
 import debounce from 'lodash-es/debounce.js';
@@ -833,6 +834,7 @@ class PageTree {
         this._dropdowns = new PageTreeDropdowns({
             container: this.ui.container
         });
+        this._keyboard = new PageTreeKeyboard(this.ui.container);
     }
 
     /**
@@ -1037,7 +1039,7 @@ class PageTree {
 
         // helpers are generated on the fly, so we need to reference
         // them every single time
-        $(sel).removeClass('cms-pagetree-dropdown-item-disabled');
+        $(sel).removeClass('cms-pagetree-dropdown-item-disabled').attr('aria-disabled', 'false');
 
         var data = {};
 
@@ -1069,7 +1071,7 @@ class PageTree {
 
         // helpers are generated on the fly, so we need to reference
         // them every single time
-        $(sel).addClass('cms-pagetree-dropdown-item-disabled');
+        $(sel).addClass('cms-pagetree-dropdown-item-disabled').attr('aria-disabled', 'true');
 
         // not loaded actions dropdown have to be updated as well
         $(dropdownSel).removeData('lazyUrlData');

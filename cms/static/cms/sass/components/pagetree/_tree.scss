@@ -12,6 +12,12 @@
 }
 
 // HELPERS
+.cms-pagetree :focus-visible,
+.cms-pagetree .jstree-anchor:focus-visible {
+    outline: 2px solid $color-primary;
+    outline-offset: -2px;
+}
+
 .cms-btn-toolbar {
     display: inline-block;
     line-height: $toolbar-button-height + 2px;
@@ -490,6 +496,30 @@
     display: table-cell;
     text-align: center;
     vertical-align: middle;
+}
+
+// Match the action buttons' focus ring without enlarging the compact icons.
+.cms-tree-item-preview,
+.cms-tree-item-lang,
+.cms-tree-item-menu {
+    .cms-tree-item-inner > a:focus-visible {
+        position: relative;
+        outline: none;
+
+        &::after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: $pagetree-cell-inner-height + 5;
+            height: $pagetree-cell-inner-height + 5;
+            transform: translate(-50%, -50%);
+            border-radius: $border-radius-buttons;
+            outline: 2px solid $color-primary;
+            outline-offset: -2px;
+            pointer-events: none;
+        }
+    }
 }
 
 .cms-tree-reload {

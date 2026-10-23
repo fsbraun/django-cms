@@ -13,7 +13,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.sites.models import Site
 from django.http import HttpResponse, QueryDict
 from django.template.defaultfilters import date as date_filter, truncatewords
-from django.test import TestCase
+from django.template.loader import render_to_string
+from django.test import SimpleTestCase, TestCase
 from django.test.client import RequestFactory
 from django.test.utils import override_settings
 from django.urls import get_script_prefix, reverse, set_script_prefix
@@ -49,9 +50,11 @@ from cms.toolbar import utils
 from cms.toolbar.items import (
     AjaxItem,
     Break,
+    ButtonList,
     ItemSearchResult,
     LinkItem,
     SubMenu,
+    TemplateItem,
     ToolbarAPIMixin,
 )
 from cms.toolbar.toolbar import CMSToolbar, EmptyToolbar
@@ -71,6 +74,33 @@ from cms.utils.conf import get_cms_setting
 from cms.utils.i18n import get_language_tuple
 from cms.utils.urlutils import admin_reverse
 from cms.views import details
+
+
+class ToolbarTemplateTests(SimpleTestCase):
+    def test_structure_toggle_follows_actions_added_by_extensions(self):
+        preview = ButtonList()
+        preview.add_button("Preview", "/preview/")
+        switcher = ButtonList(extra_classes=["cms-toolbar-item-cms-mode-switcher"])
+        publish = ButtonList()
+        publish.add_button("Publish", "/publish/")
+        appearance = TemplateItem("cms/toolbar/items/dark_mode_toggle.html")
+        items = [appearance, preview, switcher, publish]
+        toolbar = SimpleNamespace(get_left_items=[], get_right_items=items)
+
+        for bidi in (False, True):
+            with self.subTest(bidi=bidi):
+                toolbar.toolbar_language_bidi = bidi
+                html = render_to_string("cms/toolbar/toolbar.html", {
+                    "cms_toolbar": toolbar,
+                    "request": SimpleNamespace(toolbar=toolbar),
+                    "user": SimpleNamespace(is_authenticated=True),
+                })
+                self.assertLess(html.index('href="/preview/"'), html.index('href="/publish/"'))
+                self.assertLess(html.index('data-rel="color-toggle"'), html.index('href="/preview/"'))
+                self.assertLess(html.index('href="/publish/"'), html.index('class="cms-toolbar-item-cms-mode-switcher"'))
+                self.assertEqual(html.count('href="/publish/"'), 1)
+                self.assertEqual(html.count('class="cms-toolbar-item-cms-mode-switcher"'), 1)
+                self.assertEqual(items, [appearance, preview, switcher, publish])
 
 
 class ToolbarTestBase(CMSTestCase):

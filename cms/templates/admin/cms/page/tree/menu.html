@@ -163,6 +163,8 @@
                             <span class="sr-only">{% trans "Page settings (SHIFT click for advanced settings)" %}</span>
                         {% if has_change_permission and page_content and content_admin_url %}
                         </a>
+                        {% else %}
+                        </span>
                         {% endif %}
                     </div>
                 </div>

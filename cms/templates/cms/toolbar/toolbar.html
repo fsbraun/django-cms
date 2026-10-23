@@ -33,9 +33,19 @@
         </div>
 
         <div class="cms-toolbar-right">
-            {% for item in cms_toolbar.get_right_items %}
-                {{ item.render }}
-            {% endfor %}
+            {% with right_items=cms_toolbar.get_right_items %}
+                {% for item in right_items %}
+                    {% if not item.extra_classes or 'cms-toolbar-item-cms-mode-switcher' not in item.extra_classes %}
+                        {{ item.render }}
+                    {% endif %}
+                {% endfor %}
+                {# The structure toggle is visually pinned to the end; keep its focus order there too. #}
+                {% for item in right_items %}
+                    {% if 'cms-toolbar-item-cms-mode-switcher' in item.extra_classes %}
+                        {{ item.render }}
+                    {% endif %}
+                {% endfor %}
+            {% endwith %}
         </div>
     </div>
     {# end: toolbar #}

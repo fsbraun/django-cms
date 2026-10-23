@@ -8,6 +8,7 @@ test('wizard Tab navigation includes its footer and restores focus on close', as
     const modal = page.locator('.cms-modal');
     const frame = modal.locator('iframe').contentFrame();
     const choice = frame.locator('[role="radio"][tabindex="0"]');
+    const skip = frame.getByRole('link', { name: 'Skip to main content' });
     const next = modal.locator('.cms-modal-buttons .cms-btn-action');
     const cancel = modal.locator('.cms-modal-buttons a').filter({ hasText: 'Cancel' });
 
@@ -16,17 +17,18 @@ test('wizard Tab navigation includes its footer and restores focus on close', as
     await expect(modal).toHaveAccessibleName(/.+/);
     await expect(modal.locator('iframe')).toHaveAttribute('title', /.+/);
     await expect(next).toBeVisible();
+    const minimize = modal.getByRole('button', { name: 'Minimize', exact: true });
+    const maximize = modal.getByRole('button', { name: 'Maximize', exact: true });
+    const close = modal.getByRole('button', { name: 'Close', exact: true });
     await choice.focus();
-    await page.keyboard.press('Tab');
-    await expect(next).toBeFocused();
-    await page.keyboard.press('Shift+Tab');
-    await expect(choice).toBeFocused();
-
-    await cancel.focus();
-    await page.keyboard.press('Tab');
-    await expect(modal.getByRole('button', { name: 'Minimize', exact: true })).toBeFocused();
-    await page.keyboard.press('Shift+Tab');
-    await expect(cancel).toBeFocused();
+    for (const control of [next, cancel, minimize, maximize, close, skip, choice]) {
+        await page.keyboard.press('Tab');
+        await expect(control).toBeFocused();
+    }
+    for (const control of [skip, close, maximize, minimize, cancel, next, choice]) {
+        await page.keyboard.press('Shift+Tab');
+        await expect(control).toBeFocused();
+    }
     await page.keyboard.press('Escape');
     await expect(modal).not.toBeVisible();
     await expect(trigger).toBeFocused();
