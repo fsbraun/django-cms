@@ -11,7 +11,7 @@
     {% endblock toolbar_top %}
 
     {# start: toolbar #}
-    <div class="cms-toolbar">
+    <div class="cms-toolbar"{% if user.is_authenticated %} role="toolbar" aria-label="{% trans 'django CMS toolbar' %}"{% endif %}>
         <div class="cms-debug-bar"></div>
         <div class="cms-toolbar-left">
             {% include "cms/toolbar/items/logo.html" %}

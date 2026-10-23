@@ -285,8 +285,7 @@ class Toolbar {
 
             // attach hover
             lists
-                // eslint-disable-next-line complexity
-                .on(that.pointerOverOut + ' keyup.cms.toolbar', 'li', function(e) {
+                .on(that.pointerOverOut, 'li', function(e) {
                     var el = $(this);
                     var parent = el
                         .closest('.cms-toolbar-item-navigation-children')
@@ -299,7 +298,7 @@ class Toolbar {
                         e.stopPropagation();
                         return;
                     }
-                    if (el.hasClass(hover) && e.type !== 'keyup') {
+                    if (el.hasClass(hover)) {
                         return true;
                     }
 
@@ -310,15 +309,12 @@ class Toolbar {
                     el.addClass(hover);
 
                     // handle children elements
-                    if (
-                        (hasChildren && e.type !== 'keyup') ||
-                        (hasChildren && e.type === 'keyup' && e.keyCode === CMS.KEYS.ENTER)
-                    ) {
+                    if (hasChildren) {
                         el.find('> ul').show();
                         // add parent class
                         parent.addClass(hover);
                         that._handleLongMenus();
-                    } else if (e.type !== 'keyup') {
+                    } else {
                         lists.find('ul ul').hide();
                         that._handleLongMenus();
                     }

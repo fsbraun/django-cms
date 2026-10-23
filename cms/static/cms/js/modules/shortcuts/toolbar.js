@@ -1,18 +1,10 @@
 import keyboard from '../keyboard';
 import $ from 'jquery';
 
-const toolbarSelector = '.cms-toolbar, .cms-toolbar-trigger';
-const eventNamespace = '.cms.toolbar.focus';
+import ToolbarKeyboard from '../cms.toolbar.keyboard';
 
-function focusableItems(toolbar) {
-    return toolbar.find('a[href], button, input, select, textarea, [tabindex]')
-        .filter(':visible')
-        .filter(function() {
-            return this.tabIndex >= 0 && !this.disabled && $(this).css('visibility') !== 'hidden' &&
-                !$(this).closest('[inert], [aria-disabled="true"], .cms-btn-disabled, ' +
-                    '.cms-toolbar-item-navigation-disabled').length;
-        });
-}
+const toolbarSelector = '.cms-toolbar, .cms-toolbar-trigger';
+let navigation;
 
 function restoreFocus(element) {
     const target = element?.isConnected && $(element).is(':visible') ? element : document.body;
@@ -28,18 +20,29 @@ function restoreFocus(element) {
     }
 }
 
-/** Focus the toolbar and keep keyboard navigation inside it until Escape. */
+/** Focus the toolbar without adding an extra Tab stop or trapping Tab. */
 export default function () {
     const data = CMS.config.lang.shortcutAreas[0].shortcuts.toolbar;
     let active = false;
     let previousFocus = null;
 
+    navigation?.destroy();
+    navigation = new ToolbarKeyboard();
+    navigation.onEscape = () => {
+        if (active) {
+            active = false;
+            restoreFocus(previousFocus);
+        }
+    };
+    navigation.onExit = () => {
+        active = false;
+    };
     keyboard.setContext('cms');
     keyboard.bind(data.shortcut.split(' / '), event => {
-        const toolbar = $(CMS.settings.toolbar === 'expanded' ? '.cms-toolbar' : '.cms-toolbar-trigger');
-        const items = focusableItems(toolbar);
-        const navigation = items.filter('.cms-toolbar-item-navigation > li > a');
-        const target = navigation[0] || items[0];
+        navigation.prepare();
+        const toolbar = document.querySelector(CMS.settings.toolbar === 'expanded' ?
+            '.cms-toolbar' : '.cms-toolbar-trigger');
+        const target = toolbar && navigation.current.get(toolbar);
 
         if (!target) {
             return;
@@ -49,29 +52,8 @@ export default function () {
             previousFocus = document.activeElement;
         }
         active = true;
-        target.focus();
+        navigation.closeMenus();
+        navigation.focus(target);
     }, 'global');
-
-    // Delegate so toolbar refreshes do not discard the focus cycle. Keeping the
-    // handler on the toolbar also lets dialogs and sideframes manage their focus.
-    $(document).off(eventNamespace).on('keydown' + eventNamespace, toolbarSelector, event => {
-        if (!active || event.altKey || event.ctrlKey || event.metaKey) {
-            return;
-        }
-        if (event.key === 'Escape') {
-            event.preventDefault();
-            event.stopPropagation();
-            active = false;
-            restoreFocus(previousFocus);
-        } else if (event.key === 'Tab') {
-            event.preventDefault();
-            const items = focusableItems($(event.currentTarget));
-            const index = items.index(document.activeElement);
-            const next = index + (event.shiftKey ? -1 : 1);
-
-            if (items.length) {
-                items.eq((next + items.length) % items.length)[0].focus();
-            }
-        }
-    });
+    return navigation;
 }

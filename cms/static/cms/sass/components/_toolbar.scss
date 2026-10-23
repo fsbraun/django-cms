@@ -701,3 +701,10 @@
     0% { left: 0; }
     100% { left: calc(100% - 100px); }
 }
+
+// Match the page tree's visible keyboard focus indicator.
+.cms-toolbar [tabindex]:focus-visible,
+.cms-toolbar-trigger [tabindex]:focus-visible {
+    outline: 2px solid $color-primary;
+    outline-offset: -2px;
+}

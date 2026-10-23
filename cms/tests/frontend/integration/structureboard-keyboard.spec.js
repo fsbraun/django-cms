@@ -172,3 +172,31 @@ test('Escape closes the clipboard dialog and restores its contents', async ({ au
     await expect(modal).not.toBeVisible();
     await expect(page.locator('.cms-clipboard > .cms-clipboard-containers > .cms-draggable')).toHaveCount(1);
 });
+
+test('Escape leaves structure-board keyboard navigation after closing an open menu', async ({ authenticatedPage: page }) => {
+    await page.evaluate(() => {
+        const outside = document.createElement('div');
+
+        outside.innerHTML = '<button id="board-focus-origin">Page action</button>' +
+            '<input id="board-focus-next" aria-label="Next page field">';
+        document.body.prepend(outside);
+        outside.firstChild.focus();
+    });
+    await page.keyboard.press('f');
+    await page.keyboard.press('p');
+    const board = page.getByRole('region', { name: 'Page structure' });
+
+    await expect(board.locator('.cms-dragarea').first()).toBeFocused();
+    const actions = board.locator('.cms-draggables-root > .cms-draggable > .cms-dragitem > .cms-submenu-settings').first();
+
+    await actions.focus();
+    await page.keyboard.press('Enter');
+    await page.keyboard.press('Escape');
+    await expect(actions).toBeFocused();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#board-focus-origin')).toBeFocused();
+    await expect(board).toBeVisible();
+    await expect(board.locator('.cms-dragarea[tabindex], .cms-dragitem[tabindex]')).toHaveCount(0);
+    await page.keyboard.press('Tab');
+    await expect(page.locator('#board-focus-next')).toBeFocused();
+});

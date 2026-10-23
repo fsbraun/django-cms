@@ -1,6 +1,7 @@
 /* global PointerEvent */
 import { trap, untrap } from '../trap.js';
 import keyboard from '../keyboard.js';
+import $ from 'jquery';
 
 
 const queryAll = (selector, root = document) => Array.from(root.querySelectorAll(selector));
@@ -24,6 +25,19 @@ const focusElement = el => {
         el.focus();
     }
 };
+
+function restoreFocus(element) {
+    const target = element?.isConnected && element.getClientRects().length ? element : document.body;
+    const tabindex = target.getAttribute('tabindex');
+
+    target.setAttribute('tabindex', '-1');
+    target.focus();
+    if (tabindex === null) {
+        target.removeAttribute('tabindex');
+    } else {
+        target.setAttribute('tabindex', tabindex);
+    }
+}
 
 /** Add to the focused plugin, or the active placeholder when no plugin is focused. */
 function addToSelection(event) {
@@ -58,14 +72,9 @@ function addToSelection(event) {
  * @function bindPlaceholderKeys
  * @private
  */
-var bindPlaceholderKeys = function () {
+var bindPlaceholderKeys = function (exit) {
     keyboard.setContext('placeholders');
-    keyboard.bind('escape', function () {
-        queryAll('.cms-structure .cms-dragarea').forEach(el => el.removeAttribute('tabindex'));
-        untrap(query('.cms-structure-content'));
-        focusElement(document.documentElement);
-        keyboard.setContext('cms');
-    });
+    keyboard.bind('escape', exit);
 
     keyboard.bind('enter', function () {
         keyboard.setContext('plugins');
@@ -146,7 +155,7 @@ var bindPlaceholderActionKeys = function () {
 
 /**
  * Binds shortcuts:
- * [esc] go back to "placeholders" context
+ * [esc] leave structure board keyboard navigation
  * [e] edit plugin
  * [+] / [a] add child plugin
  * [x] expand / collapse plugin
@@ -155,21 +164,9 @@ var bindPlaceholderActionKeys = function () {
  * @function bindPluginKeys
  * @private
  */
-var bindPluginKeys = function () {
+var bindPluginKeys = function (exit) {
     keyboard.setContext('plugins');
-    keyboard.bind('escape', function () {
-        const plugin = document.activeElement.closest('.cms-dragitem');
-
-        if (!plugin) {
-            return;
-        }
-        const area = plugin.closest('.cms-dragarea');
-
-        removeTabIndex(queryAll('.cms-dragitem'));
-        untrap(area);
-        focusElement(area);
-        keyboard.setContext('placeholders');
-    });
+    keyboard.bind('escape', exit);
 
     keyboard.bind('e', function () {
         const plugin = document.activeElement.closest('.cms-dragitem');
@@ -246,10 +243,41 @@ var bindPluginActionKeys = function () {
  */
 export default function initPlaceholders() {
     const data = CMS.config.lang.shortcutAreas[1].shortcuts.placeholders;
+    let previousFocus = null;
+    const rememberFocus = origin => {
+        if (origin && !origin.closest('.cms-structure, .cms-modal')) {
+            previousFocus = origin;
+        }
+    };
 
-    bindPlaceholderKeys();
+    const exit = event => {
+        const board = query('.cms-structure');
+
+        if (!board?.contains(document.activeElement) || CMS.API?.StructureBoard?.dragging) {
+            return;
+        }
+        event?.preventDefault();
+        event?.stopPropagation();
+        queryAll('.cms-structure-content, .cms-dragarea, .cms-dropdown-inner', board).forEach(untrap);
+        removeTabIndex(queryAll('.cms-dragarea, .cms-dragitem', board));
+        keyboard.setContext('cms');
+        restoreFocus(previousFocus);
+        previousFocus = null;
+    };
+
+    $(document).off('.cms.structurefocus')
+        .on('focusin.cms.structurefocus', '.cms-structure', event => {
+            rememberFocus(event.relatedTarget);
+        })
+        .on('keydown.cms.structurefocus', '.cms-structure', event => {
+            if (event.key === 'Escape') {
+                exit(event);
+            }
+        });
+
+    bindPlaceholderKeys(exit);
     bindPlaceholderActionKeys();
-    bindPluginKeys();
+    bindPluginKeys(exit);
     bindPluginActionKeys();
 
     keyboard.setContext('cms');
@@ -258,6 +286,8 @@ export default function initPlaceholders() {
     keyboard.bind(data.shortcut.split(' / '), async function (event) {
         event?.preventDefault();
         const board = query('.cms-structure');
+
+        rememberFocus(document.activeElement);
 
         if (!board?.getClientRects().length) {
             const structureBoard = CMS.API?.StructureBoard;
