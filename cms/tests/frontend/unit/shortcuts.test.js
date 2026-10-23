@@ -122,7 +122,10 @@ describe('shortcuts', function() {
 
     describe('toolbar Shortcuts link', function() {
         beforeEach(function() {
-            $(fixture.el).append('<div id="shortcut-menu" style="position:fixed;top:100px;left:100px;z-index:1000000"><a class="cms-show-shortcuts" href="#">Shortcuts</a></div>');
+            $(fixture.el).append(
+                '<div id="shortcut-menu" style="position:fixed;top:100px;left:100px;z-index:1000000">' +
+                '<a class="cms-show-shortcuts" href="#">Shortcuts</a></div>'
+            );
             // The live toolbar stops clicks before they reach document delegation.
             $('#shortcut-menu').on('click', event => event.stopPropagation());
             spyOn(Modal.prototype, 'open');
