@@ -834,7 +834,10 @@ class PageTree {
         this._dropdowns = new PageTreeDropdowns({
             container: this.ui.container
         });
-        this._keyboard = new PageTreeKeyboard(this.ui.container);
+        this._keyboard = new PageTreeKeyboard(this.ui.container, {
+            tree: this.options.lang.treeLabel, page: this.options.lang.pageLabel,
+            information: this.options.lang.informationLabel, actions: this.options.lang.actionsLabel
+        });
     }
 
     /**

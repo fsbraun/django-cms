@@ -1,96 +1,164 @@
 import $ from 'jquery';
+import TreeGrid, { attribute, identify, controls, visible } from './treegrid';
 
-const focusableSelector = 'a[href], button, input, select, textarea, [tabindex], [contenteditable], summary, iframe';
-
-function tabbable(elements) {
-    return elements.filter(':visible').filter(function() {
-        return this.tabIndex >= 0 && !this.disabled &&
-            !$(this).closest('[inert], [aria-disabled="true"], .cms-btn-disabled').length;
-    });
-}
-
-/** Include all page-tree controls in Tab navigation, in visual row order. */
+/** Associate jsTree's parallel visual columns with logical treegrid rows. */
 export default class PageTreeKeyboard {
-    constructor(container) {
+    constructor(container, labels = {}) {
         this.container = container;
-        $(document).on('keydown.cms.pagetree.keyboard', event => this._onKeydown(event));
+        this.labels = { tree: 'Pages', page: 'Page', information: 'Page information', actions: 'Actions',
+            ...Object.fromEntries(Object.entries(labels).filter(([, value]) => value)) };
+        this.grids = new Map();
+        this.schedule = this.schedule.bind(this);
+        container.on('ready.jstree redraw.jstree after_open.jstree after_close.jstree move_node.jstree', this.schedule);
+        container.on('focusout.cms.pagetree.keyboard', this.schedule);
+        this.prepare();
     }
 
-    _rowOrder(grid) {
-        const cellsByNode = new Map();
-        const order = tabbable(grid.find('.jstree-grid-header').find(focusableSelector)).get();
-
-        grid.find('[data-jstreegrid]').each(function() {
-            const id = this.getAttribute('data-jstreegrid');
-
-            if (!cellsByNode.has(id)) {
-                cellsByNode.set(id, []);
-            }
-            cellsByNode.get(id).push(this);
-        });
-        grid.find('.jstree-node > .jstree-anchor').filter(':visible').each(function() {
-            const id = this.parentNode.id;
-            const rowCells = $(cellsByNode.get(id) || []);
-
-            order.push(this);
-            order.push(...tabbable(rowCells.find(focusableSelector)).filter(function() {
-                return !$(this).closest('.js-cms-pagetree-dropdown-menu').length;
-            }).get());
-        });
-        return order;
-    }
-
-    _tabOrder(grids, nativeOrder) {
-        const visited = new Set();
-        const order = [];
-
-        // Include tree anchors even when jsTree gives them tabindex=-1.
-        nativeOrder.add('.jstree-node > .jstree-anchor:visible').each((index, element) => {
-            const grid = $(element).closest('.jstree-grid-wrapper')[0];
-
-            if (!grids.includes(grid)) {
-                order.push(element);
-            } else if (!visited.has(grid)) {
-                visited.add(grid);
-                order.push(...this._rowOrder($(grid)));
-            }
-        });
-        return order;
-    }
-
-    _onKeydown(event) {
-        if (event.key !== 'Tab' || event.isDefaultPrevented() || event.altKey || event.ctrlKey || event.metaKey) {
-            return;
-        }
-        const grids = this.container.find('.jstree-grid-wrapper').get();
-
-        this._moveFocus(event, grids);
-    }
-
-    _moveFocus(event, grids) {
-        const nativeOrder = tabbable($(focusableSelector));
-        const order = this._tabOrder(grids, nativeOrder);
-        const active = document.activeElement;
-        const index = order.indexOf(active);
-        const next = order[index + (event.shiftKey ? -1 : 1)];
-        const currentGrid = $(active).closest('.jstree-grid-wrapper')[0];
-        const inPageTree = this.container.has(active).length || this.container.has(next).length;
-
-        // Safari's default Tab behavior skips ordinary links. Control the header
-        // and empty trees as well as rows so Sites and New Page remain reachable.
-        if (index < 0 || !inPageTree) {
-            return;
-        }
-        if (next) {
-            event.preventDefault();
-            next.focus();
-        } else if (currentGrid) {
-            // At the document boundary let the browser move to its own chrome.
-            const boundary = nativeOrder.filter(function() {
-                return currentGrid.contains(this);
+    schedule() {
+        if (!this.pending) {
+            this.pending = true;
+            Promise.resolve().then(() => {
+                this.pending = false;
+                this.prepare();
             });
-
-            boundary.eq(event.shiftKey ? 0 : -1)[0]?.focus();
         }
+    }
+
+    prepare() {
+        this.container.find('.jstree-grid-wrapper').each((index, root) => {
+            if (this.grids.has(root)) {
+                this.grids.get(root).controller.refresh();
+            } else {
+                this.create(root);
+            }
+        });
+        this.grids.forEach((grid, root) => {
+            if (!root.isConnected) {
+                grid.controller.destroy();
+                grid.observer.disconnect();
+                this.grids.delete(root);
+            }
+        });
+    }
+
+    create(root) {
+        const treeElement = root.querySelector('.jstree');
+        const instance = () => $(treeElement).jstree(true);
+        const controller = new TreeGrid(root, {
+            label: this.labels.tree,
+            typeahead: true,
+            rows: () => this.rows(root, treeElement),
+            selected: () => instance()?.get_selected?.()[0],
+            select: row => {
+                const tree = instance();
+
+                if (tree && !tree.is_selected(row.id)) {
+                    tree.deselect_all(true);
+                    tree.select_node(row.id, true, true);
+                }
+            },
+            toggle: (row, expanded) => new Promise(resolve => {
+                const tree = instance();
+
+                if (expanded) {
+                    tree.open_node(row.id, resolve);
+                } else {
+                    tree.close_node(row.id);
+                    resolve();
+                }
+            }),
+            activate: (row, column, target) => this.activate(controller, row, { column, target })
+        });
+        const observer = new window.MutationObserver(this.schedule);
+
+        observer.observe(root, { childList: true, subtree: true, attributes: true,
+            attributeFilter: ['class', 'style', 'hidden'] });
+        this.grids.set(root, { controller, observer });
+    }
+
+    headers(root, columns) {
+        let headerRow = root.querySelector('.cms-treegrid-headers');
+
+        if (!headerRow) {
+            headerRow = document.createElement('div');
+            headerRow.className = 'cms-treegrid-headers';
+            root.prepend(headerRow);
+        }
+        const cells = columns.map((column, index) => {
+            const header = column.querySelector('.jstree-grid-header');
+            let element = header;
+
+            if (!header || !visible(header)) {
+                element = headerRow.children[index];
+                if (!element) {
+                    element = document.createElement('span');
+                    headerRow.append(element);
+                }
+            }
+            const fallback = [this.labels.page, this.labels.information][index] || this.labels.actions;
+            const label = header?.textContent.trim() || fallback;
+
+            attribute(element, 'aria-label', label);
+            return { element };
+        });
+
+        return { id: identify(headerRow), element: headerRow, cells, header: true,
+            navigable: cells.some(cell => controls(cell).length) };
+    }
+
+    rows(root, tree) {
+        if (!tree) {
+            return [];
+        }
+        attribute(tree, 'role', 'none');
+        attribute(tree, 'tabindex', '-1');
+        attribute(tree, 'aria-activedescendant', null);
+        tree.querySelectorAll('ul').forEach(group => attribute(group, 'role', 'none'));
+        root.querySelectorAll('.jstree-grid-column, .jstree-grid-midwrapper').forEach(column => {
+            attribute(column, 'role', 'none');
+        });
+        const columns = Array.from(root.querySelectorAll('.jstree-grid-column'));
+        const header = this.headers(root, columns);
+        const cells = Array.from(root.querySelectorAll('[data-jstreegrid]'));
+        const data = Array.from(tree.querySelectorAll('.jstree-node')).map(element => {
+            const title = element.querySelector(':scope > .jstree-anchor');
+            const extra = cells.filter(cell => cell.getAttribute('data-jstreegrid') === element.id);
+            const label = title.textContent.replace(/\s+/g, ' ').trim();
+
+            attribute(title, 'aria-label', label);
+            return {
+                id: element.id, element, label,
+                level: $(element).parents('.jstree-node').length + 1,
+                parentId: element.parentElement.closest('.jstree-node')?.id,
+                expanded: element.matches('.jstree-leaf') ? undefined : element.matches('.jstree-open'),
+                cells: [{ element: title }, ...extra.map(cell => ({ element: cell }))]
+            };
+        });
+
+        return [header, ...data];
+    }
+
+    activate(controller, row, { column, target }) {
+        if (column <= 0 && row.expanded !== undefined) {
+            controller.toggle(row, !row.expanded);
+            return;
+        }
+        const candidates = column <= 0 ? row.cells.slice(1).flatMap(cell => controls(cell)) :
+            controls(row.cells[column]);
+        const action = candidates.includes(target) ? target : candidates[0];
+
+        action?.click();
+    }
+
+    destroy() {
+        this.container.off(
+            'ready.jstree redraw.jstree after_open.jstree after_close.jstree move_node.jstree', this.schedule
+        );
+        this.container.off('.cms.pagetree.keyboard');
+        this.grids.forEach(grid => {
+            grid.controller.destroy();
+            grid.observer.disconnect();
+        });
+        this.grids.clear();
     }
 }

@@ -16,6 +16,7 @@ import isEqual from 'lodash-es/isEqual.js';
 import zip from 'lodash-es/zip.js';
 import ls from 'local-storage';
 
+import PluginTreeKeyboard from './cms.plugintree.keyboard';
 import { syncDisclosure } from './cms.structureboard.accessibility';
 import './jquery.ui.custom';
 import './jquery.ui.touchpunch';
@@ -34,6 +35,7 @@ const storageKey = 'cms-structure';
 let dd;
 let placeholders;
 let originalPluginContainer;
+let pluginKeyboard;
 
 const triggerWindowResize = () => {
     'use strict';
@@ -333,7 +335,7 @@ class StructureBoard {
             draggable
                 .parents('.cms-draggable')
                 .find('> .cms-dragitem-collapsable:not(".cms-dragitem-expanded") > .cms-dragitem-text')
-                .each((i, el) => $(el).triggerHandler(Plugin.click));
+                .each((i, el) => $(el).trigger(Plugin.click));
 
             setTimeout(() => doc.data('expandmode', currentExpandmode));
             setTimeout(function() {
@@ -740,7 +742,9 @@ class StructureBoard {
                 dropOnEmpty: true,
                 // cloning huge structure is a performance loss compared to cloning just a dragitem
                 helper: function createHelper(e, item) {
-                    const clone = item.find('> .cms-dragitem').clone();
+                    const clone = item.find('> .cms-dragitem').clone().attr('aria-hidden', 'true').removeAttr('id');
+
+                    clone.find('[id]').removeAttr('id');
 
                     clone.wrap('<div class="' + item[0].className + '"></div>');
                     return clone.parent();
@@ -1547,6 +1551,14 @@ class StructureBoard {
      * @private
      */
     static _initializeGlobalHandlers() {
+        const root = document.querySelector('.cms-structure');
+
+        if (root && pluginKeyboard?.root !== root) {
+            pluginKeyboard?.destroy();
+            pluginKeyboard = new PluginTreeKeyboard(root);
+        } else {
+            pluginKeyboard?.prepare();
+        }
         placeholders = $('.cms-dragarea:not(.cms-clipboard-containers)');
         $(document).off('.cms.structurecontrols').on(
             'keydown.cms.structurecontrols keyup.cms.structurecontrols',

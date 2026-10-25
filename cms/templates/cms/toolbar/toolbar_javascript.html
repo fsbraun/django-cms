@@ -31,6 +31,13 @@
         "success": "{% filter escapejs %}{% trans "Action successful." %}{% endfilter %}",
         "confirm": "{% filter escapejs %}{% trans "Are you sure you want to delete this plugin?" %}{% endfilter %}",
         "publish": "{% filter escapejs %}{% trans "Are you sure you want to publish this page?" %}{% endfilter %}",
+        "plugins": "{% trans "Plugins" %}",
+        "plugin": "{% trans "Plugin" %}",
+        "edit": "{% trans "Edit" %}",
+        "add": "{% trans "Add plugin" %}",
+        "actions": "{% trans "Actions" %}",
+        "findPlugins": "{% trans "Find plugins" %}",
+        "pluginMatches": "{% trans "Matching plugins: %s" %}",
         "pluginResults": "{% filter escapejs %}{% trans "%s plugins available" %}{% endfilter %}",
         "addPluginPlaceholder": "{% filter escapejs %}{% trans "Plugin will be added here" %}{% endfilter %}",
         "confirmDirty": "{% filter escapejs %}{% trans "You have unsaved changes." %}{% endfilter %}",
@@ -77,9 +84,13 @@
                         "shortcut": "f > p / alt+p",
                         "desc": "{% filter escapejs %}{% trans "Focus on placeholders" %}{% endfilter %}"
                     },
+                    "find": {
+                        "shortcut": "/",
+                        "desc": "{% filter escapejs %}{% trans "Find a plugin in the structure board" %}{% endfilter %}"
+                    },
                     "traversing": {
                         "shortcut": "tab / shift+tab",
-                        "desc": "{% filter escapejs %}{% trans "Move to next/previous element" %}{% endfilter %}"
+                        "desc": "{% filter escapejs %}{% trans "Move through controls in the selected row, then leave the treegrid" %}{% endfilter %}"
                     },
                     "enter": {
                         "shortcut": "enter",

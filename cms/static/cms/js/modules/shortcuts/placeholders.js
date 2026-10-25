@@ -1,5 +1,5 @@
 /* global PointerEvent */
-import { trap, untrap } from '../trap.js';
+import { untrap } from '../trap.js';
 import keyboard from '../keyboard.js';
 import $ from 'jquery';
 
@@ -77,7 +77,6 @@ var bindPlaceholderKeys = function (exit) {
     keyboard.bind('escape', exit);
 
     keyboard.bind('enter', function () {
-        keyboard.setContext('plugins');
         const area = document.activeElement.closest('.cms-dragarea');
 
         if (!area) {
@@ -88,9 +87,7 @@ var bindPlaceholderKeys = function (exit) {
         if (!plugins.length) {
             return;
         }
-        setTabIndex(plugins, '0');
-        focusElement(plugins[0]);
-        trap(area);
+        focusElement(plugins.filter(element => element.getClientRects().length)[0]);
         keyboard.setContext('plugins');
     });
 
@@ -121,9 +118,7 @@ var bindPlaceholderKeys = function (exit) {
         const submenuItem = query('.cms-submenu-item a', area);
 
         focusElement(submenuItem);
-        const dropdownInner = query('.cms-dropdown-inner', area);
 
-        trap(dropdownInner);
     });
 };
 
@@ -203,9 +198,7 @@ var bindPluginKeys = function (exit) {
         const submenuItem = query('.cms-submenu-item a', plugin);
 
         focusElement(submenuItem);
-        const dropdownInner = query('.cms-dropdown-inner', plugin);
 
-        trap(dropdownInner);
     });
 };
 
@@ -259,7 +252,7 @@ export default function initPlaceholders() {
         event?.preventDefault();
         event?.stopPropagation();
         queryAll('.cms-structure-content, .cms-dragarea, .cms-dropdown-inner', board).forEach(untrap);
-        removeTabIndex(queryAll('.cms-dragarea, .cms-dragitem', board));
+        removeTabIndex(queryAll('.cms-dragarea, .cms-dragitem:not([role="row"])', board));
         keyboard.setContext('cms');
         restoreFocus(previousFocus);
         previousFocus = null;
@@ -311,9 +304,8 @@ export default function initPlaceholders() {
             return;
         }
 
-        setTabIndex(dragareas, '0');
+        setTabIndex(dragareas, '-1');
         focusElement(dragareas[0]);
-        trap(query('.cms-structure-content'));
         keyboard.setContext('placeholders');
     }, 'global');
 }
